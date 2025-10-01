@@ -101,6 +101,9 @@ async def ask_next_question(message: Message, state: FSMContext):
     """Generate and send next question"""
     data = await state.get_data()
 
+    # Show thinking indicator
+    await message.answer("🤔 Думаю над вопросом...")
+
     question = await claude.generate_question(
         methodology=data['methodology'],
         problem_description=data['problem_description'],
@@ -129,6 +132,9 @@ async def ask_next_question(message: Message, state: FSMContext):
 @router.message(ProblemSolvingStates.asking_questions)
 async def receive_answer(message: Message, state: FSMContext):
     """Process user's answer"""
+    # Show thinking indicator immediately
+    await message.answer("🤔 Принял, думаю над следующим вопросом...")
+
     data = await state.get_data()
 
     # Add answer to history
@@ -151,7 +157,6 @@ async def receive_answer(message: Message, state: FSMContext):
 @router.callback_query(F.data == "get_solution")
 async def handle_get_solution(callback: CallbackQuery, state: FSMContext):
     """User wants solution now"""
-    await callback.message.answer("🎯 Генерирую решение...")
     await generate_final_solution(callback.message, state)
     await callback.answer()
 
@@ -161,6 +166,9 @@ async def generate_final_solution(message: Message, state: FSMContext):
     data = await state.get_data()
 
     await state.set_state(ProblemSolvingStates.generating_solution)
+
+    # Show thinking indicator
+    await message.answer("🎯 Генерирую решение...")
 
     solution = await claude.generate_solution(
         problem_description=data['problem_description'],
