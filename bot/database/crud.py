@@ -45,14 +45,25 @@ async def get_user_by_telegram_id(session: AsyncSession, telegram_id: int) -> Op
     return result.scalar_one_or_none()
 
 
-async def update_user_premium(session: AsyncSession, user_id: int, is_premium: bool):
-    """Update user premium status"""
+async def update_user_credits(
+    session: AsyncSession,
+    user_id: int,
+    problems_remaining: Optional[int] = None,
+    discussion_credits: Optional[int] = None,
+    last_purchased_package: Optional[str] = None
+):
+    """Update user credits and package info"""
     result = await session.execute(
         select(User).where(User.id == user_id)
     )
     user = result.scalar_one_or_none()
     if user:
-        user.is_premium = is_premium
+        if problems_remaining is not None:
+            user.problems_remaining = problems_remaining
+        if discussion_credits is not None:
+            user.discussion_credits = discussion_credits
+        if last_purchased_package is not None:
+            user.last_purchased_package = last_purchased_package
         await session.commit()
 
 

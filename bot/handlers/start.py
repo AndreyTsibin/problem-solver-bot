@@ -21,9 +21,9 @@ async def cmd_start(message: Message):
 
     # Create inline keyboard with main actions
     builder = InlineKeyboardBuilder()
-    builder.button(text="🆕 Новая проблема", callback_data="new_problem")
-    builder.button(text="📋 Мои проблемы", callback_data="my_problems")
-    builder.button(text="💎 Премиум", callback_data="premium")
+    builder.button(text="🚀 Решить проблему", callback_data="new_problem")
+    builder.button(text="📖 История решений", callback_data="my_problems")
+    builder.button(text="💳 Купить решения", callback_data="buy_solutions")
     builder.button(text="ℹ️ Помощь", callback_data="help")
     builder.adjust(1)  # 1 button per row
 
@@ -42,8 +42,8 @@ async def cmd_start(message: Message):
 • Fishbone — для многофакторных ситуаций
 • First Principles — для системных вызовов
 
-🎁 **Бесплатно:** {user.free_problems_left} анализа
-💎 **Премиум:** безлимит + экспорт решений
+💳 **Доступно решений:** {user.problems_remaining}
+💬 **Доступно вопросов:** {user.discussion_credits}
 
 Готов начать?"""
 
@@ -57,7 +57,7 @@ async def cmd_help(message: Message):
     """Handle /help command"""
     help_text = """📚 **Как пользоваться ботом:**
 
-1️⃣ Нажми "🆕 Новая проблема"
+1️⃣ Нажми "🚀 Решить проблему"
 2️⃣ Опиши проблему в 2-3 предложениях
 3️⃣ Отвечай на мои уточняющие вопросы
 4️⃣ Получи детальный план решения
@@ -90,7 +90,7 @@ async def callback_help(callback: CallbackQuery):
     """Handle help button press"""
     help_text = """📚 **Как пользоваться ботом:**
 
-1️⃣ Нажми "🆕 Новая проблема"
+1️⃣ Нажми "🚀 Решить проблему"
 2️⃣ Опиши проблему в 2-3 предложениях
 3️⃣ Отвечай на мои уточняющие вопросы
 4️⃣ Получи детальный план решения

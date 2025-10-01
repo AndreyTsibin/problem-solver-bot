@@ -16,7 +16,7 @@ async def show_problems_list(callback: CallbackQuery):
         problems = await get_user_problems(session, user.id, limit=10)
 
         if not problems:
-            await callback.message.answer("📭 У тебя пока нет решённых проблем")
+            await callback.message.answer("📭 У тебя пока нет решённых задач")
             await callback.answer()
             return
 
@@ -32,7 +32,7 @@ async def show_problems_list(callback: CallbackQuery):
         builder.adjust(1)
 
         await callback.message.answer(
-            "📋 **Твои проблемы:**",
+            "📖 **История решений:**",
             reply_markup=builder.as_markup()
         )
 

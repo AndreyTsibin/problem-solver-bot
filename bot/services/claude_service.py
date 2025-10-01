@@ -41,6 +41,8 @@ Respond ONLY with valid JSON in this exact format:
 }}
 
 DO NOT include any text outside the JSON. DO NOT use markdown code blocks.
+
+ВАЖНО: Отвечай ТОЛЬКО на русском языке. Весь текст должен быть на русском.
 """
 
         for attempt in range(self.max_retries):
@@ -128,6 +130,8 @@ Generate the next clarifying question to dig deeper into the problem.
 - Keep it under 100 words
 
 Respond with ONLY the question text, nothing else.
+
+ВАЖНО: Отвечай ТОЛЬКО на русском языке. Весь текст должен быть на русском.
 """
 
         try:
@@ -209,6 +213,8 @@ Create a comprehensive solution in JSON format:
 }}
 
 RESPOND ONLY WITH VALID JSON. NO MARKDOWN. NO EXTRA TEXT.
+
+ВАЖНО: Весь текст в JSON должен быть на русском языке. Отвечай только по-русски.
 """
 
         for attempt in range(self.max_retries):

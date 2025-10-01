@@ -26,10 +26,15 @@ async def start_new_problem(callback: CallbackQuery, state: FSMContext):
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, callback.from_user.id)
 
-        if not user.is_premium and user.free_problems_left <= 0:
+        if user.problems_remaining <= 0:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="💳 Купить решения", callback_data="buy_solutions")
+            builder.adjust(1)
+
             await callback.message.answer(
-                "❌ Бесплатный лимит исчерпан!\n\n"
-                "Нажми 💎 Премиум чтобы продолжить"
+                "❌ У тебя закончились решения!\n\n"
+                "💳 Купи пакет решений, чтобы продолжить анализ проблем.",
+                reply_markup=builder.as_markup()
             )
             await callback.answer()
             return
@@ -71,10 +76,9 @@ async def receive_problem(message: Message, state: FSMContext):
         )
         await state.update_data(problem_id=problem.id)
 
-        # Decrement free problems
-        if not user.is_premium:
-            user.free_problems_left -= 1
-            await session.commit()
+        # Decrement problem credits
+        user.problems_remaining -= 1
+        await session.commit()
 
     methodology_names = {
         '5_whys': '5 Почему',
@@ -165,28 +169,29 @@ async def generate_final_solution(message: Message, state: FSMContext):
     )
 
     # Format solution message
-    solution_text = f"""🎯 **КОРНЕВАЯ ПРИЧИНА:**
+    solution_text = f"""🎯 *КОРНЕВАЯ ПРИЧИНА:*
 {solution['root_cause']}
 
-📊 **АНАЛИЗ:**
+📊 *АНАЛИЗ:*
 • Методика: {solution['analysis']['methodology']}
 • Факторы: {', '.join(solution['analysis']['key_factors'][:3])}
 
-📋 **ПЛАН ДЕЙСТВИЙ:**
+📋 *ПЛАН ДЕЙСТВИЙ:*
 
-**Сейчас (24ч):**
+*Сейчас (24ч):*
 {chr(10).join(['□ ' + a for a in solution['action_plan']['immediate']])}
 
-**Эта неделя:**
+*Эта неделя:*
 {chr(10).join(['□ ' + a for a in solution['action_plan']['this_week']])}
 
-**Долгосрочно:**
+*Долгосрочно:*
 {chr(10).join(['□ ' + a for a in solution['action_plan']['long_term']])}
 
-📈 **МЕТРИКИ:**
+📈 *МЕТРИКИ:*
 {chr(10).join([f"• {m['what']} → {m['target']}" for m in solution['metrics']])}"""
 
-    await message.answer(solution_text)
+    # Send without parse_mode to avoid markdown conflicts
+    await message.answer(solution_text, parse_mode=None)
 
     # Save to DB
     async with AsyncSessionLocal() as session:
@@ -202,14 +207,17 @@ async def generate_final_solution(message: Message, state: FSMContext):
             problem.solved_at = datetime.utcnow()
             await session.commit()
 
-    # Back to menu
+    # Offer discussion option
+    data = await state.get_data()
+    await state.update_data(discussion_questions_used=0)
+
     builder = InlineKeyboardBuilder()
-    builder.button(text="🆕 Новая проблема", callback_data="new_problem")
-    builder.button(text="📋 Мои проблемы", callback_data="my_problems")
+    builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
+    builder.button(text="🚀 Решить новую проблему", callback_data="new_problem")
+    builder.button(text="📖 История решений", callback_data="my_problems")
     builder.adjust(1)
 
     await message.answer("Что дальше?", reply_markup=builder.as_markup())
-    await state.clear()
 
 
 @router.callback_query(F.data == "skip_question")
@@ -225,3 +233,124 @@ async def skip_question(callback: CallbackQuery, state: FSMContext):
         await ask_next_question(callback.message, state)
 
     await callback.answer("Пропущено")
+
+
+# Discussion system handlers
+@router.callback_query(F.data == "start_discussion")
+async def start_discussion(callback: CallbackQuery, state: FSMContext):
+    """Start discussion mode after solution"""
+    async with AsyncSessionLocal() as session:
+        user = await get_user_by_telegram_id(session, callback.from_user.id)
+
+        # Determine base discussion limit from last package
+        base_limits = {
+            'starter': 3,
+            'medium': 5,
+            'large': 10
+        }
+        base_limit = base_limits.get(user.last_purchased_package, 3)
+
+        data = await state.get_data()
+        questions_used = data.get('discussion_questions_used', 0)
+        total_available = base_limit + user.discussion_credits
+        remaining = total_available - questions_used
+
+        if remaining <= 0:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
+            builder.button(text="🚀 Начать новую сессию", callback_data="new_problem")
+            builder.adjust(1)
+
+            await callback.message.answer(
+                "❌ Вопросы для обсуждения закончились!\n\n"
+                f"📊 Базовый лимит: {base_limit}\n"
+                f"💬 Дополнительные: {user.discussion_credits}\n"
+                f"✅ Использовано: {questions_used}\n\n"
+                "Купи дополнительные вопросы или начни новую сессию.",
+                reply_markup=builder.as_markup()
+            )
+            await callback.answer()
+            return
+
+        await state.set_state(ProblemSolvingStates.discussing_solution)
+        await callback.message.answer(
+            f"💬 **Обсуждение решения**\n\n"
+            f"Вопросов осталось: {remaining}/{total_available}\n\n"
+            f"Задай любой вопрос по решению проблемы."
+        )
+        await callback.answer()
+
+
+@router.message(ProblemSolvingStates.discussing_solution)
+async def handle_discussion_question(message: Message, state: FSMContext):
+    """Handle user's discussion question"""
+    async with AsyncSessionLocal() as session:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+
+        # Determine limits
+        base_limits = {
+            'starter': 3,
+            'medium': 5,
+            'large': 10
+        }
+        base_limit = base_limits.get(user.last_purchased_package, 3)
+
+        data = await state.get_data()
+        questions_used = data.get('discussion_questions_used', 0)
+        total_available = base_limit + user.discussion_credits
+        remaining = total_available - questions_used
+
+        if remaining <= 0:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
+            builder.button(text="🚀 Начать новую сессию", callback_data="new_problem")
+            builder.adjust(1)
+
+            await message.answer(
+                "❌ Лимит вопросов исчерпан!",
+                reply_markup=builder.as_markup()
+            )
+            return
+
+        # Generate answer using Claude
+        await message.answer("🤔 Думаю над ответом...")
+
+        conversation_history = data.get('conversation_history', [])
+        conversation_history.append({"role": "user", "content": message.text})
+
+        answer = await claude.generate_question(
+            methodology=data.get('methodology', '5_whys'),
+            problem_description=data.get('problem_description', ''),
+            conversation_history=conversation_history,
+            step=questions_used + 1
+        )
+
+        conversation_history.append({"role": "assistant", "content": answer})
+
+        # Increment counter and deduct from appropriate pool
+        questions_used += 1
+        if questions_used > base_limit:
+            # Deduct from purchased credits
+            credits_used_from_purchased = questions_used - base_limit
+            user.discussion_credits = max(0, user.discussion_credits - 1)
+            await session.commit()
+
+        await state.update_data(
+            discussion_questions_used=questions_used,
+            conversation_history=conversation_history
+        )
+
+        remaining = total_available - questions_used
+
+        await message.answer(f"💡 {answer}\n\n📊 Вопросов осталось: {remaining}/{total_available}")
+
+        if remaining == 0:
+            builder = InlineKeyboardBuilder()
+            builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
+            builder.button(text="🚀 Начать новую сессию", callback_data="new_problem")
+            builder.adjust(1)
+
+            await message.answer(
+                "✅ Вопросы закончились!",
+                reply_markup=builder.as_markup()
+            )

@@ -8,3 +8,4 @@ class ProblemSolvingStates(StatesGroup):
     analyzing_problem = State()     # Claude is analyzing problem type
     asking_questions = State()      # Interactive Q&A based on methodology
     generating_solution = State()   # Generating final solution
+    discussing_solution = State()   # Additional discussion after solution

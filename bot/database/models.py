@@ -12,16 +12,17 @@ class Base(DeclarativeBase):
 class User(Base):
     """User model for storing Telegram user data"""
     __tablename__ = "users"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     username: Mapped[Optional[str]] = mapped_column(String(32))
     first_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
-    free_problems_left: Mapped[int] = mapped_column(Integer, default=3)
+    problems_remaining: Mapped[int] = mapped_column(Integer, default=1)
+    discussion_credits: Mapped[int] = mapped_column(Integer, default=0)
+    last_purchased_package: Mapped[Optional[str]] = mapped_column(String(20))  # 'starter', 'medium', 'large'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationships
     sessions: Mapped[List["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     problems: Mapped[List["Problem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
