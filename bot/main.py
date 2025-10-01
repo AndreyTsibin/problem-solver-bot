@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 
 from bot.config import BOT_TOKEN
 from bot.database.engine import init_db
-from bot.handlers import start
+from bot.handlers import start, problem_flow, history, payment
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +30,9 @@ async def main():
 
     # Register routers
     dp.include_router(start.router)
+    dp.include_router(problem_flow.router)
+    dp.include_router(history.router)
+    dp.include_router(payment.router)
 
     # Start polling
     logger.info("Bot started successfully! Press Ctrl+C to stop.")
