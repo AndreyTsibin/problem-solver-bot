@@ -101,6 +101,19 @@ For detailed development instructions, see [docs/TASKS.md](docs/TASKS.md).
 
 For VPS deployment instructions, see Task #10 in [docs/TASKS.md](docs/TASKS.md).
 
+## Team
+
+**Lead Developer & Project Architect**
+- Andrew T. - [@andrejtsibin](https://t.me/andrejtsibin)
+- Telegram: https://t.me/andrejtsibin
+
+**AI Development Assistant**
+- Claude (Anthropic) - AI pair programming and architecture design
+
+## Contact
+
+For questions, suggestions, or collaboration opportunities, reach out to Andrew T. via Telegram: https://t.me/andrejtsibin
+
 ## License
 
 MIT License
