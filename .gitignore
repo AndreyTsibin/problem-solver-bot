@@ -1,0 +1,72 @@
+# Секретные данные и конфигурация
+.env
+.env.*
+.env.local
+.env.production
+*.env
+**/secrets/
+config/secrets.py
+
+# Python
+venv/
+env/
+ENV/
+.Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# База данных
+*.db
+*.sqlite
+*.sqlite3
+bot_database.db
+*.db-journal
+
+# Логи
+*.log
+logs/
+log/
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+desktop.ini
+.Spotlight-V100
+.Trashes
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+# Тесты
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Прочее
+*.bak
+*.tmp
