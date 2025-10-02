@@ -41,7 +41,7 @@ Problem Solver Bot — это твой личный коуч по решению
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/problem-solver-bot.git
+git clone https://github.com/AndreyTsibin/problem-solver-bot.git
 cd problem-solver-bot
 ```
 
@@ -99,7 +99,52 @@ For detailed development instructions, see [docs/TASKS.md](docs/TASKS.md).
 
 ## Deployment
 
-For VPS deployment instructions, see Task #10 in [docs/TASKS.md](docs/TASKS.md).
+### Quick VPS Deployment (Timeweb Cloud)
+
+**Recommended VPS Configuration:**
+- **CPU**: 1 x 3.3 ГГц
+- **RAM**: 2 ГБ
+- **Disk**: 30 ГБ NVMe
+- **Price**: 600₽/мес
+- **OS**: Ubuntu 24.04
+- **Region**: Netherlands (best latency for Telegram/Claude API)
+
+#### Automated Deployment
+
+```bash
+# On your VPS:
+git clone https://github.com/AndreyTsibin/problem-solver-bot.git
+cd problem-solver-bot
+sudo bash scripts/deploy.sh
+```
+
+#### Manual Deployment
+
+See detailed instructions in [DEPLOYMENT.md](DEPLOYMENT.md)
+
+#### Available Scripts
+
+- `scripts/deploy.sh` — Full automated deployment
+- `scripts/update.sh` — Update bot after code changes
+- `scripts/backup.sh` — Backup database
+- `scripts/logs.sh` — View logs interactively
+
+#### Useful Commands
+
+```bash
+# Service management
+sudo systemctl status problem-solver-bot
+sudo systemctl restart problem-solver-bot
+sudo journalctl -u problem-solver-bot -f
+
+# Update bot
+sudo bash scripts/update.sh
+
+# Create backup
+sudo bash scripts/backup.sh
+```
+
+For complete deployment guide, see [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## Team
 

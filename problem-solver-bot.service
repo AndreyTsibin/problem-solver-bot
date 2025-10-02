@@ -1,0 +1,23 @@
+[Unit]
+Description=Problem Solver Telegram Bot (МозгоБот)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/problem-solver-bot
+ExecStart=/opt/problem-solver-bot/venv/bin/python -m bot.main
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=problem-solver-bot
+
+# Environment variables (optional, if not using .env file)
+# Environment="BOT_TOKEN=your_token_here"
+# Environment="CLAUDE_API_KEY=your_api_key_here"
+# Environment="DATABASE_URL=sqlite+aiosqlite:///bot_database.db"
+# Environment="ENVIRONMENT=production"
+
+[Install]
+WantedBy=multi-user.target
