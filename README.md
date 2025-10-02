@@ -1,4 +1,4 @@
-# МозгоБот — умный коуч для решения проблем
+# Problem Solver Bot — умный коуч для решения проблем
 
 AI-powered Telegram bot that helps analyze and solve problems systematically using proven methodologies.
 
