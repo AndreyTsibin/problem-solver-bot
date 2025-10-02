@@ -3,6 +3,7 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.chat_action import ChatActionSender
 import json
 from datetime import datetime
 
@@ -95,14 +96,31 @@ async def ask_next_question(message: Message, state: FSMContext):
     """Generate and send next question"""
     data = await state.get_data()
 
-    # Show thinking indicator
-    await message.answer("🤔 Думаю над вопросом...")
+    # Show typing indicator while generating question
+    bot = message.bot
 
-    question = await claude.generate_question(
-        problem_description=data['problem_description'],
-        conversation_history=data['conversation_history'],
-        step=data['current_step']
-    )
+    # Send processing message
+    processing_msg = await message.answer("⏳ Генерирую следующий вопрос...")
+
+    # Send initial typing indicator immediately
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+    # Keep typing indicator active during Claude request
+    async with ChatActionSender(
+        bot=bot,
+        chat_id=message.chat.id,
+        action="typing",
+        initial_sleep=0.5,
+        interval=3.0
+    ):
+        question = await claude.generate_question(
+            problem_description=data['problem_description'],
+            conversation_history=data['conversation_history'],
+            step=data['current_step']
+        )
+
+    # Delete processing message
+    await processing_msg.delete()
 
     # Add to history
     history = data['conversation_history']
@@ -125,9 +143,6 @@ async def ask_next_question(message: Message, state: FSMContext):
 @router.message(ProblemSolvingStates.asking_questions)
 async def receive_answer(message: Message, state: FSMContext):
     """Process user's answer"""
-    # Show thinking indicator immediately
-    await message.answer("🤔 Принял, думаю над следующим вопросом...")
-
     data = await state.get_data()
 
     # Add answer to history
@@ -160,13 +175,30 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     await state.set_state(ProblemSolvingStates.generating_solution)
 
-    # Show thinking indicator
-    await message.answer("🎯 Генерирую решение...")
+    # Show typing indicator while generating solution
+    bot = message.bot
 
-    solution_text = await claude.generate_solution(
-        problem_description=data['problem_description'],
-        conversation_history=data['conversation_history']
-    )
+    # Send processing message
+    processing_msg = await message.answer("🔍 Анализирую и генерирую решение...")
+
+    # Send initial typing indicator immediately
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+    # Keep typing indicator active during Claude request
+    async with ChatActionSender(
+        bot=bot,
+        chat_id=message.chat.id,
+        action="typing",
+        initial_sleep=0.5,
+        interval=3.0
+    ):
+        solution_text = await claude.generate_solution(
+            problem_description=data['problem_description'],
+            conversation_history=data['conversation_history']
+        )
+
+    # Delete processing message
+    await processing_msg.delete()
 
     # Send solution (it's already formatted with emojis)
     await message.answer(solution_text, parse_mode=None)
@@ -191,11 +223,11 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
-    builder.button(text="🚀 Решить новую проблему", callback_data="new_problem")
-    builder.button(text="📖 История решений", callback_data="my_problems")
     builder.adjust(1)
 
+    from bot.keyboards import get_main_menu_keyboard
     await message.answer("Что дальше?", reply_markup=builder.as_markup())
+    await message.answer("Используй меню для навигации 👇", reply_markup=get_main_menu_keyboard())
 
 
 @router.callback_query(F.data == "skip_question")
@@ -236,17 +268,18 @@ async def start_discussion(callback: CallbackQuery, state: FSMContext):
         if remaining <= 0:
             builder = InlineKeyboardBuilder()
             builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
-            builder.button(text="🚀 Начать новую сессию", callback_data="new_problem")
             builder.adjust(1)
 
+            from bot.keyboards import get_main_menu_keyboard
             await callback.message.answer(
                 "❌ Вопросы для обсуждения закончились!\n\n"
                 f"📊 Базовый лимит: {base_limit}\n"
                 f"💬 Дополнительные: {user.discussion_credits}\n"
                 f"✅ Использовано: {questions_used}\n\n"
-                "Купи дополнительные вопросы или начни новую сессию.",
+                "Купи дополнительные вопросы или используй меню для навигации 👇",
                 reply_markup=builder.as_markup()
             )
+            await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
             await callback.answer()
             return
 
@@ -281,26 +314,44 @@ async def handle_discussion_question(message: Message, state: FSMContext):
         if remaining <= 0:
             builder = InlineKeyboardBuilder()
             builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
-            builder.button(text="🚀 Начать новую сессию", callback_data="new_problem")
             builder.adjust(1)
 
+            from bot.keyboards import get_main_menu_keyboard
             await message.answer(
                 "❌ Лимит вопросов исчерпан!",
                 reply_markup=builder.as_markup()
             )
+            await message.answer("Меню:", reply_markup=get_main_menu_keyboard())
             return
 
-        # Generate answer using Claude
-        await message.answer("🤔 Думаю над ответом...")
-
+        # Generate answer using Claude with typing indicator
         conversation_history = data.get('conversation_history', [])
         conversation_history.append({"role": "user", "content": message.text})
 
-        answer = await claude.generate_question(
-            problem_description=data.get('problem_description', ''),
-            conversation_history=conversation_history,
-            step=questions_used + 1
-        )
+        bot = message.bot
+
+        # Send processing message
+        processing_msg = await message.answer("💭 Обрабатываю твой вопрос...")
+
+        # Send initial typing indicator immediately
+        await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+        # Keep typing indicator active during Claude request
+        async with ChatActionSender(
+            bot=bot,
+            chat_id=message.chat.id,
+            action="typing",
+            initial_sleep=0.5,
+            interval=3.0
+        ):
+            answer = await claude.generate_question(
+                problem_description=data.get('problem_description', ''),
+                conversation_history=conversation_history,
+                step=questions_used + 1
+            )
+
+        # Delete processing message
+        await processing_msg.delete()
 
         conversation_history.append({"role": "assistant", "content": answer})
 
@@ -324,10 +375,11 @@ async def handle_discussion_question(message: Message, state: FSMContext):
         if remaining == 0:
             builder = InlineKeyboardBuilder()
             builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
-            builder.button(text="🚀 Начать новую сессию", callback_data="new_problem")
             builder.adjust(1)
 
+            from bot.keyboards import get_main_menu_keyboard
             await message.answer(
                 "✅ Вопросы закончились!",
                 reply_markup=builder.as_markup()
             )
+            await message.answer("Меню:", reply_markup=get_main_menu_keyboard())
