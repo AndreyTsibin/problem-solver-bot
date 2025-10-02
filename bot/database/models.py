@@ -78,16 +78,18 @@ class Problem(Base):
 
 
 class Payment(Base):
-    """Payment model for storing Telegram Stars payment records"""
+    """Payment model for storing payment records (YooKassa and Telegram Stars)"""
     __tablename__ = "payments"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), default='XTR')  # Telegram Stars
-    provider: Mapped[str] = mapped_column(String(50))
+    currency: Mapped[str] = mapped_column(String(3), default='RUB')  # RUB for YooKassa, XTR for Telegram Stars
+    provider: Mapped[Optional[str]] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(20), default='pending')
     telegram_payment_id: Mapped[Optional[str]] = mapped_column(String(255))
+    payment_id: Mapped[Optional[str]] = mapped_column(String(255))  # YooKassa payment ID
+    package_type: Mapped[Optional[str]] = mapped_column(String(50))  # Package type (starter, medium, large, etc.)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

@@ -186,6 +186,26 @@ async def buy_subscription_premium(callback: CallbackQuery):
     )
 
 
+@router.callback_query(F.data == "subscribe_standard")
+async def subscribe_standard(callback: CallbackQuery):
+    """Subscribe to Standard plan (alias for buy_subscription_standard)"""
+    await initiate_yookassa_payment(
+        callback,
+        package_type='subscription_standard',
+        description="Подписка Стандарт: 15 решений/мес + 15 вопросов (ежемесячно)"
+    )
+
+
+@router.callback_query(F.data == "subscribe_premium")
+async def subscribe_premium(callback: CallbackQuery):
+    """Subscribe to Premium plan (alias for buy_subscription_premium)"""
+    await initiate_yookassa_payment(
+        callback,
+        package_type='subscription_premium',
+        description="Подписка Премиум: 30 решений/мес + 25 вопросов + приоритет (ежемесячно)"
+    )
+
+
 async def initiate_yookassa_payment(callback: CallbackQuery, package_type: str, description: str):
     """
     Initiate payment via YooKassa
@@ -201,12 +221,13 @@ async def initiate_yookassa_payment(callback: CallbackQuery, package_type: str, 
 
         # Create payment in YooKassa
         yookassa = YooKassaService()
+        bot_info = await callback.bot.me()
         payment_data = await yookassa.create_payment(
             amount=package['price'],
             description=description,
             user_telegram_id=user_id,
             package_type=package_type,
-            return_url=f"https://t.me/{callback.bot.me.username}"
+            return_url=f"https://t.me/{bot_info.username}"
         )
 
         # Save payment to database
@@ -221,6 +242,7 @@ async def initiate_yookassa_payment(callback: CallbackQuery, package_type: str, 
                 package_type=package_type,
                 amount=package['price'],
                 currency='RUB',
+                provider='yookassa',
                 status='pending',
                 payment_id=payment_data['payment_id'],
                 created_at=datetime.utcnow()
