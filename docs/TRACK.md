@@ -1,7 +1,7 @@
 # Project Progress Tracker
 
-**Project:** Problem Solver Telegram Bot  
-**Started:** 2025-10-01  
+**Project:** МозгоБот
+**Started:** 2025-10-01
 **Status:** 🚧 In Development
 
 ---

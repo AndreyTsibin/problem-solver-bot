@@ -1,4 +1,4 @@
-# Development Roadmap: Problem Solver Bot
+# Development Roadmap: МозгоБот
 
 ## Project Timeline
 **Total Duration:** 3-4 недели (MVP)

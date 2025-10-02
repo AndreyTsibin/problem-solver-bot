@@ -1,10 +1,10 @@
-# Problem Solver Telegram Bot
+# МозгоБот — умный коуч для решения проблем
 
-AI-powered bot that helps analyze and solve problems systematically using proven methodologies.
+AI-powered Telegram bot that helps analyze and solve problems systematically using proven methodologies.
 
 ## Description
 
-This Telegram bot acts as a personal problem-solving coach, using advanced AI (Claude) and established analytical frameworks to help users identify root causes and create actionable solutions.
+МозгоБот — это твой личный коуч по решению проблем. Бот использует продвинутую AI (Claude) и проверенные аналитические методики, чтобы помочь найти корневую причину и создать конкретный план действий.
 
 ### Methodologies Used
 
@@ -76,10 +76,10 @@ problem-solver-bot/
 │   ├── handlers/          # Telegram message handlers
 │   ├── services/          # Business logic (Claude API, prompts)
 │   ├── middleware/        # Error handling
+│   ├── keyboards.py       # Persistent ReplyKeyboard UI
 │   ├── states.py          # FSM state definitions
 │   ├── config.py          # Environment configuration
 │   └── main.py           # Bot entry point
-├── methodologies/         # Methodology instruction files
 ├── docs/                 # Documentation
 ├── requirements.txt      # Python dependencies
 └── .env                  # Environment variables (not in git)
