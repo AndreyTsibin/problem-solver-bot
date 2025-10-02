@@ -82,11 +82,7 @@ async def receive_problem(message: Message, state: FSMContext):
         remaining = user.problems_remaining
         await session.commit()
 
-    await message.answer(
-        "✅ Понял. Задам несколько вопросов для глубокого анализа."
-    )
-
-    # Ask first question
+    # Ask first question immediately
     await state.set_state(ProblemSolvingStates.asking_questions)
     await ask_next_question(message, state)
 
@@ -126,10 +122,8 @@ async def ask_next_question(message: Message, state: FSMContext):
     history.append({"role": "assistant", "content": question})
     await state.update_data(conversation_history=history)
 
-    # Send with keyboard
+    # Send with skip button only
     builder = InlineKeyboardBuilder()
-    if data['current_step'] >= 3:
-        builder.button(text="✅ Хватит, дай решение", callback_data="get_solution")
     builder.button(text="⏭️ Пропустить вопрос", callback_data="skip_question")
     builder.adjust(1)
 
