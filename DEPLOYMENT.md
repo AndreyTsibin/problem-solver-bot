@@ -99,8 +99,8 @@ nano .env
 Вставьте следующее содержимое (замените на ваши реальные значения):
 
 ```env
-BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
-CLAUDE_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+BOT_TOKEN=your_bot_token_here
+CLAUDE_API_KEY=your_claude_api_key_here
 DATABASE_URL=sqlite+aiosqlite:///bot_database.db
 ENVIRONMENT=production
 ```

@@ -12,13 +12,15 @@ def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
     """
     builder = ReplyKeyboardBuilder()
 
-    # Add main menu buttons
+    # Row 1: Main actions
     builder.button(text="🚀 Решить проблему")
     builder.button(text="📖 История")
-    builder.button(text="💳 Премиум")
-    builder.button(text="ℹ️ Помощь")
 
-    # Adjust layout: 2 buttons per row
+    # Row 2: Subscriptions and Referrals
+    builder.button(text="💎 Подписки")
+    builder.button(text="🎁 Рефералы")
+
+    # Adjust layout: 2 buttons per row for all rows
     builder.adjust(2, 2)
 
     # Create markup with persistent display

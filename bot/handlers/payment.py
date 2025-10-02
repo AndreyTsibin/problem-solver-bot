@@ -1,270 +1,370 @@
+"""Payment handlers using YooKassa (rubles)"""
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, Message, LabeledPrice, PreCheckoutQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import CallbackQuery, Message
+from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_user_by_telegram_id
-from bot.database.models import Payment
+from bot.database.models import Payment as PaymentModel
+from bot.services.yookassa_service import YooKassaService
+from datetime import datetime
+import structlog
 
 router = Router()
+logger = structlog.get_logger()
 
-# Pricing in Telegram Stars (optimized for better conversion)
+# Pricing in Russian Rubles
 PACKAGES = {
-    'starter': {'solutions': 5, 'price': 125, 'discussion_limit': 10},
-    'medium': {'solutions': 15, 'price': 300, 'discussion_limit': 15},
-    'large': {'solutions': 30, 'price': 600, 'discussion_limit': 25},
-    'discussion_5': {'discussions': 5, 'price': 50},
-    'discussion_15': {'discussions': 15, 'price': 120},
+    'starter': {'solutions': 5, 'price': 250, 'discussion_limit': 10, 'name': 'Starter'},
+    'medium': {'solutions': 15, 'price': 600, 'discussion_limit': 15, 'name': 'Medium'},
+    'large': {'solutions': 30, 'price': 1200, 'discussion_limit': 25, 'name': 'Large'},
+    'discussion_5': {'discussions': 5, 'price': 100, 'name': '5 вопросов'},
+    'discussion_15': {'discussions': 15, 'price': 240, 'name': '15 вопросов'},
     # Subscription plans (monthly recurring)
-    'subscription_standard': {'solutions': 15, 'price': 299, 'discussion_limit': 15, 'plan': 'standard'},
-    'subscription_premium': {'solutions': 30, 'price': 499, 'discussion_limit': 25, 'plan': 'premium'},
+    'subscription_standard': {
+        'solutions': 15,
+        'price': 599,
+        'discussion_limit': 15,
+        'plan': 'standard',
+        'name': 'Подписка Стандарт'
+    },
+    'subscription_premium': {
+        'solutions': 30,
+        'price': 999,
+        'discussion_limit': 25,
+        'plan': 'premium',
+        'name': 'Подписка Премиум'
+    },
 }
 
 
 @router.callback_query(F.data == "buy_solutions")
 async def show_solution_packages(callback: CallbackQuery):
     """Show solution package and subscription options"""
-    text = """💳 **Тарифы и пакеты**
+    text = """💳 <b>Тарифы и пакеты</b>
 
-**📆 ПОДПИСКИ (ежемесячно):**
+<b>📆 ПОДПИСКИ (ежемесячно):</b>
 
-🔷 **Стандарт** — 299 ⭐️ (~599₽/мес)
+🔷 <b>Стандарт</b> — 599₽/мес
 • 15 решений каждый месяц
 • 15 вопросов на обсуждение
 • История за 3 месяца
 
-💎 **Премиум** — 499 ⭐️ (~999₽/мес)
+💎 <b>Премиум</b> — 999₽/мес
 • 30 решений каждый месяц
 • 25 вопросов на обсуждение
 • Полная история решений
 • Приоритетная обработка
 
----
+━━━━━━━━━━━━━━━
 
-**💰 РАЗОВЫЕ ПАКЕТЫ:**
+<b>💰 РАЗОВЫЕ ПАКЕТЫ:</b>
 
-🟢 **Starter** — 125 ⭐️ (~250₽)
+🟢 <b>Starter</b> — 250₽
 • 5 решений
 • 10 вопросов на обсуждение
 
-🔵 **Medium** — 300 ⭐️ (~600₽)
+🔵 <b>Medium</b> — 600₽
 • 15 решений
 • 15 вопросов на обсуждение
 
-🟣 **Large** — 600 ⭐️ (~1200₽)
+🟣 <b>Large</b> — 1200₽
 • 30 решений
 • 25 вопросов на обсуждение
 
-Решения не сгорают — используй когда удобно!"""
+<i>Решения не сгорают — используй когда удобно!</i>"""
 
     builder = InlineKeyboardBuilder()
     # Subscriptions
-    builder.button(text="🔷 Подписка Стандарт (299⭐️/мес)", callback_data="buy_subscription_standard")
-    builder.button(text="💎 Подписка Премиум (499⭐️/мес)", callback_data="buy_subscription_premium")
+    builder.button(text="🔷 Подписка Стандарт (599₽/мес)", callback_data="buy_subscription_standard")
+    builder.button(text="💎 Подписка Премиум (999₽/мес)", callback_data="buy_subscription_premium")
     # One-time packages
-    builder.button(text="🟢 Starter (125⭐️)", callback_data="buy_starter")
-    builder.button(text="🔵 Medium (300⭐️)", callback_data="buy_medium")
-    builder.button(text="🟣 Large (600⭐️)", callback_data="buy_large")
+    builder.button(text="🟢 Starter (250₽)", callback_data="buy_starter")
+    builder.button(text="🔵 Medium (600₽)", callback_data="buy_medium")
+    builder.button(text="🟣 Large (1200₽)", callback_data="buy_large")
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 
-    await callback.message.answer(text, reply_markup=builder.as_markup())
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
 
 @router.callback_query(F.data == "buy_discussions")
 async def show_discussion_packages(callback: CallbackQuery):
     """Show discussion question packages"""
-    text = """💬 **Пакеты вопросов для обсуждения**
+    text = """💬 <b>Пакеты вопросов для обсуждения</b>
 
 После каждого решения можно задать дополнительные вопросы.
-Купи пакет вопросов для углубленного анализа:
+Выбери пакет:
 
-**📦 Малый** — 5 вопросов
-• Цена: 50 ⭐️ (~100₽)
+🟢 <b>Малый</b> — 100₽
+• 5 дополнительных вопросов
 
-**📦 Средний** — 15 вопросов
-• Цена: 120 ⭐️ (~240₽)
+🔵 <b>Средний</b> — 240₽ (скидка 20₽!)
+• 15 дополнительных вопросов
 
-Вопросы добавляются к твоему счёту и не сгорают!"""
+<i>Вопросы не сгорают — используй когда нужно!</i>"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="📦 5 вопросов (50⭐️)", callback_data="buy_discussion_5")
-    builder.button(text="📦 15 вопросов (120⭐️)", callback_data="buy_discussion_15")
-    builder.button(text="🔙 К пакетам решений", callback_data="buy_solutions")
+    builder.button(text="🟢 5 вопросов (100₽)", callback_data="buy_discussion_5")
+    builder.button(text="🔵 15 вопросов (240₽)", callback_data="buy_discussion_15")
+    builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
-    await callback.message.answer(text, reply_markup=builder.as_markup())
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
     await callback.answer()
 
 
+# Payment handlers for each package
 @router.callback_query(F.data == "buy_starter")
 async def buy_starter_package(callback: CallbackQuery):
     """Purchase Starter package"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='starter',
-        title="Starter Package - 5 решений",
-        description="5 решений проблем + лимит 10 вопросов в обсуждении"
+        description="Пакет Starter: 5 решений + 10 вопросов на обсуждение"
     )
 
 
 @router.callback_query(F.data == "buy_medium")
 async def buy_medium_package(callback: CallbackQuery):
     """Purchase Medium package"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='medium',
-        title="Medium Package - 15 решений",
-        description="15 решений проблем + лимит 15 вопросов в обсуждении"
+        description="Пакет Medium: 15 решений + 15 вопросов на обсуждение"
     )
 
 
 @router.callback_query(F.data == "buy_large")
 async def buy_large_package(callback: CallbackQuery):
     """Purchase Large package"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='large',
-        title="Large Package - 30 решений",
-        description="30 решений проблем + лимит 25 вопросов в обсуждении"
+        description="Пакет Large: 30 решений + 25 вопросов на обсуждение"
     )
 
 
 @router.callback_query(F.data == "buy_discussion_5")
 async def buy_discussion_5(callback: CallbackQuery):
     """Purchase 5 discussion questions"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='discussion_5',
-        title="5 вопросов для обсуждения",
-        description="5 дополнительных вопросов после решения проблемы"
+        description="5 дополнительных вопросов для обсуждения"
     )
 
 
 @router.callback_query(F.data == "buy_discussion_15")
 async def buy_discussion_15(callback: CallbackQuery):
     """Purchase 15 discussion questions"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='discussion_15',
-        title="15 вопросов для обсуждения",
-        description="15 дополнительных вопросов после решения проблемы"
+        description="15 дополнительных вопросов для обсуждения"
     )
 
 
 @router.callback_query(F.data == "buy_subscription_standard")
 async def buy_subscription_standard(callback: CallbackQuery):
     """Purchase Standard monthly subscription"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='subscription_standard',
-        title="Подписка Стандарт (ежемесячно)",
-        description="15 решений/мес + 15 вопросов на обсуждение"
+        description="Подписка Стандарт: 15 решений/мес + 15 вопросов (ежемесячно)"
     )
 
 
 @router.callback_query(F.data == "buy_subscription_premium")
 async def buy_subscription_premium(callback: CallbackQuery):
     """Purchase Premium monthly subscription"""
-    await initiate_package_payment(
+    await initiate_yookassa_payment(
         callback,
         package_type='subscription_premium',
-        title="Подписка Премиум (ежемесячно)",
-        description="30 решений/мес + 25 вопросов на обсуждение + приоритет"
+        description="Подписка Премиум: 30 решений/мес + 25 вопросов + приоритет (ежемесячно)"
     )
 
 
-async def initiate_package_payment(callback: CallbackQuery, package_type: str, title: str, description: str):
-    """Generic payment initiation"""
-    package = PACKAGES[package_type]
-    prices = [LabeledPrice(label=title, amount=package['price'])]
+async def initiate_yookassa_payment(callback: CallbackQuery, package_type: str, description: str):
+    """
+    Initiate payment via YooKassa
 
-    await callback.message.answer_invoice(
-        title=title,
-        description=description,
-        payload=f"{package_type}_{callback.from_user.id}",
-        currency="XTR",  # Telegram Stars
-        prices=prices
-    )
+    Args:
+        callback: Telegram callback query
+        package_type: Type of package being purchased
+        description: Payment description
+    """
+    try:
+        package = PACKAGES[package_type]
+        user_id = callback.from_user.id
 
-    await callback.answer()
-
-
-@router.pre_checkout_query()
-async def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
-    """Validate payment before charging"""
-    await pre_checkout_query.answer(ok=True)
-
-
-@router.message(F.successful_payment)
-async def process_successful_payment(message: Message):
-    """Handle successful payment"""
-    payment_info = message.successful_payment
-    payload = payment_info.invoice_payload
-    package_type = payload.rsplit("_", 1)[0]  # Extract package type from payload
-
-    # Save to database and update user credits
-    async with AsyncSessionLocal() as session:
-        user = await get_user_by_telegram_id(session, message.from_user.id)
-
-        # Create payment record
-        payment = Payment(
-            user_id=user.id,
-            amount=payment_info.total_amount,
-            currency=payment_info.currency,
-            provider="telegram_stars",
-            status="completed",
-            telegram_payment_id=payment_info.telegram_payment_charge_id
+        # Create payment in YooKassa
+        yookassa = YooKassaService()
+        payment_data = await yookassa.create_payment(
+            amount=package['price'],
+            description=description,
+            user_telegram_id=user_id,
+            package_type=package_type,
+            return_url=f"https://t.me/{callback.bot.me.username}"
         )
-        session.add(payment)
 
-        # Update user credits based on package type
+        # Save payment to database
+        async with AsyncSessionLocal() as session:
+            user = await get_user_by_telegram_id(session, user_id)
+            if not user:
+                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                return
+
+            payment = PaymentModel(
+                user_id=user.id,
+                package_type=package_type,
+                amount=package['price'],
+                currency='RUB',
+                status='pending',
+                payment_id=payment_data['payment_id'],
+                created_at=datetime.utcnow()
+            )
+            session.add(payment)
+            await session.commit()
+
+        # Send payment link to user
+        text = (
+            f"💳 <b>Оплата: {package['name']}</b>\n\n"
+            f"Сумма: <b>{package['price']}₽</b>\n"
+            f"{description}\n\n"
+            f"Нажми кнопку ниже для оплаты через ЮКассу:"
+        )
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="💳 Оплатить",
+                url=payment_data['confirmation_url']
+            )],
+            [InlineKeyboardButton(
+                text="🔍 Проверить оплату",
+                callback_data=f"check_payment_{payment_data['payment_id']}"
+            )]
+        ])
+
+        await callback.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        await callback.answer()
+
+        logger.info(
+            "payment_initiated",
+            user_id=user_id,
+            package=package_type,
+            amount=package['price'],
+            payment_id=payment_data['payment_id']
+        )
+
+    except Exception as e:
+        logger.error("payment_initiation_error", error=str(e), user_id=callback.from_user.id)
+        await callback.answer(
+            "❌ Ошибка при создании платежа. Попробуйте позже.",
+            show_alert=True
+        )
+
+
+@router.callback_query(F.data.startswith("check_payment_"))
+async def check_payment_status(callback: CallbackQuery):
+    """Check payment status in YooKassa"""
+    try:
+        payment_id = callback.data.split("_", 2)[2]
+
+        yookassa = YooKassaService()
+        payment_status = await yookassa.check_payment_status(payment_id)
+
+        if payment_status['paid']:
+            # Payment successful - activate package
+            await process_successful_payment(callback, payment_status)
+        else:
+            await callback.answer(
+                f"⏳ Платёж в статусе: {payment_status['status']}\n"
+                "Попробуйте проверить позже.",
+                show_alert=True
+            )
+
+    except Exception as e:
+        logger.error("payment_check_error", error=str(e), payment_id=payment_id)
+        await callback.answer("❌ Ошибка при проверке платежа", show_alert=True)
+
+
+async def process_successful_payment(callback: CallbackQuery, payment_status: dict):
+    """Process successful payment and activate package"""
+    try:
+        metadata = payment_status['metadata']
+        user_id = int(metadata['user_telegram_id'])
+        package_type = metadata['package_type']
         package = PACKAGES[package_type]
 
-        # Check if it's a subscription
-        if 'plan' in package:
-            # Subscription purchase
+        async with AsyncSessionLocal() as session:
             from bot.database.crud_subscriptions import create_subscription
-            subscription = await create_subscription(
-                session=session,
-                user_id=user.id,
-                plan=package['plan'],
-                price=package['price'],
-                solutions_per_month=package['solutions'],
-                discussion_limit=package['discussion_limit']
+
+            user = await get_user_by_telegram_id(session, user_id)
+            if not user:
+                return
+
+            # Update payment status
+            payment = await session.execute(
+                f"SELECT * FROM payments WHERE payment_id = '{payment_status['payment_id']}'"
             )
-            success_msg = f"""🎉 **Подписка активирована!**
+            # Mark as completed
 
-💎 Тариф: {package['plan'].capitalize()}
-✅ Решений в месяц: {package['solutions']}
-💬 Лимит вопросов: {package['discussion_limit']}
-📅 Следующее списание: через 30 дней
+            # Activate package based on type
+            if package_type.startswith('subscription_'):
+                # Create subscription
+                subscription = await create_subscription(
+                    session,
+                    user_id=user.id,
+                    plan=package['plan'],
+                    price=package['price']
+                )
+                user.problems_remaining += package['solutions']
+                user.subscription_id = subscription.id
 
-Твоя подписка активна! 🚀"""
+                success_msg = (
+                    f"✅ <b>Подписка активирована!</b>\n\n"
+                    f"Тариф: {package['name']}\n"
+                    f"Решений добавлено: {package['solutions']}\n"
+                    f"Лимит вопросов: {package['discussion_limit']}\n\n"
+                    f"Подписка будет автоматически продлеваться каждый месяц."
+                )
 
-        elif 'solutions' in package:
-            # One-time solution package
-            user.problems_remaining += package['solutions']
-            user.last_purchased_package = package_type
-            success_msg = f"""🎉 **Спасибо за покупку!**
+            elif package_type.startswith('discussion_'):
+                # Add discussion credits
+                user.discussion_credits += package['discussions']
 
-✅ Добавлено решений: {package['solutions']}
-💳 Всего доступно: {user.problems_remaining}
-💬 Лимит вопросов в обсуждении: {package['discussion_limit']}
+                success_msg = (
+                    f"✅ <b>Вопросы добавлены!</b>\n\n"
+                    f"Дополнительных вопросов: +{package['discussions']}\n"
+                    f"Всего вопросов: {user.discussion_credits}"
+                )
 
-Готов решать проблемы! 🚀"""
-        else:
-            # Discussion package
-            user.discussion_credits += package['discussions']
-            success_msg = f"""🎉 **Спасибо за покупку!**
+            else:
+                # One-time package
+                user.problems_remaining += package['solutions']
+                user.last_purchased_package = package_type
 
-✅ Добавлено вопросов: {package['discussions']}
-💬 Всего доступно: {user.discussion_credits}
+                success_msg = (
+                    f"✅ <b>Пакет активирован!</b>\n\n"
+                    f"Решений добавлено: +{package['solutions']}\n"
+                    f"Всего решений: {user.problems_remaining}\n"
+                    f"Лимит вопросов: {package['discussion_limit']}"
+                )
 
-Теперь можешь глубже обсуждать решения! 💡"""
+            await session.commit()
 
-        await session.commit()
+            await callback.message.answer(success_msg, parse_mode="HTML")
+            await callback.answer("✅ Оплата успешна!")
 
-    from bot.keyboards import get_main_menu_keyboard
-    await message.answer(success_msg, reply_markup=get_main_menu_keyboard())
+            logger.info(
+                "payment_processed",
+                user_id=user_id,
+                package=package_type,
+                amount=payment_status['amount']
+            )
+
+    except Exception as e:
+        logger.error("payment_processing_error", error=str(e))
+        await callback.answer("❌ Ошибка при активации пакета", show_alert=True)

@@ -149,15 +149,10 @@ For complete deployment guide, see [DEPLOYMENT.md](DEPLOYMENT.md)
 ## Team
 
 **Lead Developer & Project Architect**
-- Andrew T. - [@andrejtsibin](https://t.me/andrejtsibin)
-- Telegram: https://t.me/andrejtsibin
+- Andrew T.
 
 **AI Development Assistant**
 - Claude (Anthropic) - AI pair programming and architecture design
-
-## Contact
-
-For questions, suggestions, or collaboration opportunities, reach out to Andrew T. via Telegram: https://t.me/andrejtsibin
 
 ## License
 

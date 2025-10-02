@@ -24,10 +24,35 @@ async def migrate():
     """Run database migration"""
     print("🔄 Starting database migration...")
 
-    # Create all new tables
-    print("📊 Creating new tables (subscriptions, referrals)...")
     async with engine.begin() as conn:
+        # First, create new tables (subscriptions, referrals)
+        print("📊 Creating new tables (subscriptions, referrals)...")
         await conn.run_sync(Base.metadata.create_all)
+
+        # Add new columns to users table
+        print("🔧 Adding new columns to users table...")
+
+        # Check if columns already exist before adding
+        result = await conn.execute(text("PRAGMA table_info(users)"))
+        existing_columns = {row[1] for row in result.fetchall()}
+
+        migrations = []
+        if 'subscription_id' not in existing_columns:
+            migrations.append("ALTER TABLE users ADD COLUMN subscription_id INTEGER")
+        if 'referred_by' not in existing_columns:
+            migrations.append("ALTER TABLE users ADD COLUMN referred_by BIGINT")
+        if 'referral_code' not in existing_columns:
+            migrations.append("ALTER TABLE users ADD COLUMN referral_code VARCHAR(8)")
+        if 'referral_credits' not in existing_columns:
+            migrations.append("ALTER TABLE users ADD COLUMN referral_credits INTEGER DEFAULT 0 NOT NULL")
+
+        # Execute migrations
+        for sql in migrations:
+            try:
+                await conn.execute(text(sql))
+                print(f"  ✓ {sql}")
+            except Exception as e:
+                print(f"  ⚠️  {sql} - {e}")
 
     print("✅ Migration completed successfully!")
     print("\n📝 Summary of changes:")
