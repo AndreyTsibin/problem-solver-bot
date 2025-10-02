@@ -5,6 +5,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.chat_action import ChatActionSender
 import json
+import random
 from datetime import datetime
 
 from bot.states import ProblemSolvingStates
@@ -24,6 +25,32 @@ from sqlalchemy import select
 router = Router()
 claude = ClaudeService()
 prompt_builder = PromptBuilder()
+
+
+def get_random_thinking_message(context: str) -> str:
+    """Get random thinking message based on context"""
+    messages = {
+        "question": [
+            "Хм, интересно... 🤔",
+            "Дай подумаю...",
+            "Сейчас сформулирую вопрос...",
+            "Минутку...",
+            "Понял, идём дальше..."
+        ],
+        "solution": [
+            "Сейчас всё проанализирую... 🔍",
+            "Минутку, формулирую решение...",
+            "Собираю всё воедино...",
+            "Анализирую информацию..."
+        ],
+        "discussion": [
+            "Хороший вопрос! 🤔",
+            "Дай подумаю...",
+            "Сейчас отвечу...",
+            "Минутку..."
+        ]
+    }
+    return random.choice(messages.get(context, ["Думаю..."]))
 
 
 @router.callback_query(F.data == "new_problem")
@@ -95,7 +122,7 @@ async def ask_next_question(message: Message, state: FSMContext):
     bot = message.bot
 
     # Send processing message
-    processing_msg = await message.answer("⏳ Генерирую следующий вопрос...")
+    processing_msg = await message.answer(get_random_thinking_message("question"))
 
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
@@ -172,7 +199,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     bot = message.bot
 
     # Send processing message
-    processing_msg = await message.answer("🔍 Анализирую и генерирую решение...")
+    processing_msg = await message.answer(get_random_thinking_message("solution"))
 
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
@@ -192,9 +219,6 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     # Delete processing message
     await processing_msg.delete()
-
-    # Send solution with Markdown formatting
-    await message.answer(solution_text, parse_mode="Markdown")
 
     # Save to DB
     async with AsyncSessionLocal() as session:
@@ -217,7 +241,8 @@ async def generate_final_solution(message: Message, state: FSMContext):
     builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
     builder.adjust(1)
 
-    await message.answer(".", reply_markup=builder.as_markup())  # Minimal text to show only button
+    # Send solution with Markdown formatting and discussion button
+    await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
 
 @router.callback_query(F.data == "skip_question")
@@ -321,7 +346,7 @@ async def handle_discussion_question(message: Message, state: FSMContext):
         bot = message.bot
 
         # Send processing message
-        processing_msg = await message.answer("💭 Обрабатываю твой вопрос...")
+        processing_msg = await message.answer(get_random_thinking_message("discussion"))
 
         # Send initial typing indicator immediately
         await bot.send_chat_action(chat_id=message.chat.id, action="typing")
