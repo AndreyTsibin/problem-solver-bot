@@ -1,7 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from bot.database.models import User, Session, Problem, Payment
+from bot.database.models import User, Session, Problem, Payment, Subscription, Referral
 from typing import Optional, List
+from datetime import datetime, timedelta
+import secrets
 
 
 # User operations

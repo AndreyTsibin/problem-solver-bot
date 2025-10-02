@@ -17,10 +17,26 @@ if not CLAUDE_API_KEY:
     raise ValueError("CLAUDE_API_KEY is not set in .env file")
 
 # Free tier limits
-FREE_SOLUTIONS = 3  # Free problem solutions per user (increased from 1)
+FREE_SOLUTIONS = 1  # Free problem solutions per user (optimized for conversion)
 FREE_DISCUSSION_QUESTIONS = 5  # Base question limit for all users
 
 # Package limits for paid users
 STARTER_DISCUSSION_LIMIT = 10  # Additional questions for Starter package
 MEDIUM_DISCUSSION_LIMIT = 15   # Additional questions for Medium package
 LARGE_DISCUSSION_LIMIT = 25    # Additional questions for Large package
+
+# Subscription plans (monthly recurring)
+SUBSCRIPTION_PLANS = {
+    'standard': {
+        'price': 299,  # Telegram Stars (~599₽)
+        'solutions_per_month': 15,
+        'discussion_limit': 15,
+        'name': 'Стандарт'
+    },
+    'premium': {
+        'price': 499,  # Telegram Stars (~999₽)
+        'solutions_per_month': 30,
+        'discussion_limit': 25,
+        'name': 'Премиум'
+    }
+}

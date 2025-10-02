@@ -17,9 +17,18 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     username: Mapped[Optional[str]] = mapped_column(String(32))
     first_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    problems_remaining: Mapped[int] = mapped_column(Integer, default=3)  # Increased from 1 to 3
+    problems_remaining: Mapped[int] = mapped_column(Integer, default=1)  # Optimized for conversion
     discussion_credits: Mapped[int] = mapped_column(Integer, default=0)
     last_purchased_package: Mapped[Optional[str]] = mapped_column(String(20))  # 'starter', 'medium', 'large'
+
+    # Subscription fields
+    subscription_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("subscriptions.id", ondelete="SET NULL"))
+
+    # Referral fields
+    referred_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
+    referral_code: Mapped[Optional[str]] = mapped_column(String(20), unique=True)
+    referral_credits: Mapped[int] = mapped_column(Integer, default=0)  # Bonus credits from referrals
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -27,6 +36,9 @@ class User(Base):
     sessions: Mapped[List["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     problems: Mapped[List["Problem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     payments: Mapped[List["Payment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    subscription: Mapped[Optional["Subscription"]] = relationship(back_populates="user", foreign_keys=[subscription_id])
+    referrals: Mapped[List["Referral"]] = relationship(back_populates="referrer", foreign_keys="Referral.referrer_id", cascade="all, delete-orphan")
+    referred_users: Mapped[List["User"]] = relationship(foreign_keys=[referred_by])
 
 
 class Session(Base):
@@ -68,7 +80,7 @@ class Problem(Base):
 class Payment(Base):
     """Payment model for storing Telegram Stars payment records"""
     __tablename__ = "payments"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount: Mapped[float] = mapped_column(DECIMAL(10, 2), nullable=False)
@@ -77,6 +89,45 @@ class Payment(Base):
     status: Mapped[str] = mapped_column(String(20), default='pending')
     telegram_payment_id: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    
+
     # Relationships
     user: Mapped["User"] = relationship(back_populates="payments")
+
+
+class Subscription(Base):
+    """Subscription model for recurring monthly subscriptions"""
+    __tablename__ = "subscriptions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    plan: Mapped[str] = mapped_column(String(20), nullable=False)  # 'standard', 'premium', 'unlimited'
+    price: Mapped[int] = mapped_column(Integer, nullable=False)  # Price in Telegram Stars
+    solutions_per_month: Mapped[int] = mapped_column(Integer, nullable=False)
+    discussion_limit: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    status: Mapped[str] = mapped_column(String(20), default='active')  # 'active', 'cancelled', 'expired'
+    next_billing_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # Relationships
+    user: Mapped[Optional["User"]] = relationship(back_populates="subscription", foreign_keys="User.subscription_id")
+
+
+class Referral(Base):
+    """Referral model for tracking referral program"""
+    __tablename__ = "referrals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    referrer_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    referred_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Reward tracking
+    reward_given: Mapped[bool] = mapped_column(Boolean, default=False)
+    reward_amount: Mapped[int] = mapped_column(Integer, default=0)  # Credits rewarded
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    rewarded_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    # Relationships
+    referrer: Mapped["User"] = relationship(back_populates="referrals", foreign_keys=[referrer_id])
+    referred: Mapped["User"] = relationship(foreign_keys=[referred_id])

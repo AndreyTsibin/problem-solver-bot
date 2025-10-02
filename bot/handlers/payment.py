@@ -8,41 +8,63 @@ from bot.database.models import Payment
 
 router = Router()
 
-# Pricing in Telegram Stars
+# Pricing in Telegram Stars (optimized for better conversion)
 PACKAGES = {
-    'starter': {'solutions': 5, 'price': 100, 'discussion_limit': 10},
-    'medium': {'solutions': 15, 'price': 250, 'discussion_limit': 15},
-    'large': {'solutions': 30, 'price': 500, 'discussion_limit': 25},
+    'starter': {'solutions': 5, 'price': 125, 'discussion_limit': 10},
+    'medium': {'solutions': 15, 'price': 300, 'discussion_limit': 15},
+    'large': {'solutions': 30, 'price': 600, 'discussion_limit': 25},
     'discussion_5': {'discussions': 5, 'price': 50},
     'discussion_15': {'discussions': 15, 'price': 120},
+    # Subscription plans (monthly recurring)
+    'subscription_standard': {'solutions': 15, 'price': 299, 'discussion_limit': 15, 'plan': 'standard'},
+    'subscription_premium': {'solutions': 30, 'price': 499, 'discussion_limit': 25, 'plan': 'premium'},
 }
 
 
 @router.callback_query(F.data == "buy_solutions")
 async def show_solution_packages(callback: CallbackQuery):
-    """Show solution package options"""
-    text = """💳 **Пакеты решений**
+    """Show solution package and subscription options"""
+    text = """💳 **Тарифы и пакеты**
 
-Выбери подходящий пакет:
+**📆 ПОДПИСКИ (ежемесячно):**
 
-**🟢 Starter** — 5 решений
-• Цена: 100 ⭐️ (~$2)
-• Лимит вопросов в обсуждении: 10
+🔷 **Стандарт** — 299 ⭐️ (~599₽/мес)
+• 15 решений каждый месяц
+• 15 вопросов на обсуждение
+• История за 3 месяца
 
-**🔵 Medium** — 15 решений
-• Цена: 250 ⭐️ (~$5)
-• Лимит вопросов в обсуждении: 15
+💎 **Премиум** — 499 ⭐️ (~999₽/мес)
+• 30 решений каждый месяц
+• 25 вопросов на обсуждение
+• Полная история решений
+• Приоритетная обработка
 
-**🟣 Large** — 30 решений
-• Цена: 500 ⭐️ (~$10)
-• Лимит вопросов в обсуждении: 25
+---
+
+**💰 РАЗОВЫЕ ПАКЕТЫ:**
+
+🟢 **Starter** — 125 ⭐️ (~250₽)
+• 5 решений
+• 10 вопросов на обсуждение
+
+🔵 **Medium** — 300 ⭐️ (~600₽)
+• 15 решений
+• 15 вопросов на обсуждение
+
+🟣 **Large** — 600 ⭐️ (~1200₽)
+• 30 решений
+• 25 вопросов на обсуждение
 
 Решения не сгорают — используй когда удобно!"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="🟢 Starter (100⭐️)", callback_data="buy_starter")
-    builder.button(text="🔵 Medium (250⭐️)", callback_data="buy_medium")
-    builder.button(text="🟣 Large (500⭐️)", callback_data="buy_large")
+    # Subscriptions
+    builder.button(text="🔷 Подписка Стандарт (299⭐️/мес)", callback_data="buy_subscription_standard")
+    builder.button(text="💎 Подписка Премиум (499⭐️/мес)", callback_data="buy_subscription_premium")
+    # One-time packages
+    builder.button(text="🟢 Starter (125⭐️)", callback_data="buy_starter")
+    builder.button(text="🔵 Medium (300⭐️)", callback_data="buy_medium")
+    builder.button(text="🟣 Large (600⭐️)", callback_data="buy_large")
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 
@@ -59,10 +81,10 @@ async def show_discussion_packages(callback: CallbackQuery):
 Купи пакет вопросов для углубленного анализа:
 
 **📦 Малый** — 5 вопросов
-• Цена: 50 ⭐️ (~$1)
+• Цена: 50 ⭐️ (~100₽)
 
 **📦 Средний** — 15 вопросов
-• Цена: 120 ⭐️ (~$2.4)
+• Цена: 120 ⭐️ (~240₽)
 
 Вопросы добавляются к твоему счёту и не сгорают!"""
 
@@ -131,6 +153,28 @@ async def buy_discussion_15(callback: CallbackQuery):
     )
 
 
+@router.callback_query(F.data == "buy_subscription_standard")
+async def buy_subscription_standard(callback: CallbackQuery):
+    """Purchase Standard monthly subscription"""
+    await initiate_package_payment(
+        callback,
+        package_type='subscription_standard',
+        title="Подписка Стандарт (ежемесячно)",
+        description="15 решений/мес + 15 вопросов на обсуждение"
+    )
+
+
+@router.callback_query(F.data == "buy_subscription_premium")
+async def buy_subscription_premium(callback: CallbackQuery):
+    """Purchase Premium monthly subscription"""
+    await initiate_package_payment(
+        callback,
+        package_type='subscription_premium',
+        title="Подписка Премиум (ежемесячно)",
+        description="30 решений/мес + 25 вопросов на обсуждение + приоритет"
+    )
+
+
 async def initiate_package_payment(callback: CallbackQuery, package_type: str, title: str, description: str):
     """Generic payment initiation"""
     package = PACKAGES[package_type]
@@ -158,7 +202,7 @@ async def process_successful_payment(message: Message):
     """Handle successful payment"""
     payment_info = message.successful_payment
     payload = payment_info.invoice_payload
-    package_type = payload.split("_")[0]
+    package_type = payload.rsplit("_", 1)[0]  # Extract package type from payload
 
     # Save to database and update user credits
     async with AsyncSessionLocal() as session:
@@ -178,8 +222,29 @@ async def process_successful_payment(message: Message):
         # Update user credits based on package type
         package = PACKAGES[package_type]
 
-        if 'solutions' in package:
-            # Solution package
+        # Check if it's a subscription
+        if 'plan' in package:
+            # Subscription purchase
+            from bot.database.crud_subscriptions import create_subscription
+            subscription = await create_subscription(
+                session=session,
+                user_id=user.id,
+                plan=package['plan'],
+                price=package['price'],
+                solutions_per_month=package['solutions'],
+                discussion_limit=package['discussion_limit']
+            )
+            success_msg = f"""🎉 **Подписка активирована!**
+
+💎 Тариф: {package['plan'].capitalize()}
+✅ Решений в месяц: {package['solutions']}
+💬 Лимит вопросов: {package['discussion_limit']}
+📅 Следующее списание: через 30 дней
+
+Твоя подписка активна! 🚀"""
+
+        elif 'solutions' in package:
+            # One-time solution package
             user.problems_remaining += package['solutions']
             user.last_purchased_package = package_type
             success_msg = f"""🎉 **Спасибо за покупку!**
