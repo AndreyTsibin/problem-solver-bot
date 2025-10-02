@@ -10,9 +10,9 @@ router = Router()
 
 # Pricing in Telegram Stars
 PACKAGES = {
-    'starter': {'solutions': 5, 'price': 100, 'discussion_base': 3},
-    'medium': {'solutions': 15, 'price': 250, 'discussion_base': 5},
-    'large': {'solutions': 50, 'price': 700, 'discussion_base': 10},
+    'starter': {'solutions': 5, 'price': 100, 'discussion_limit': 10},
+    'medium': {'solutions': 15, 'price': 250, 'discussion_limit': 15},
+    'large': {'solutions': 30, 'price': 500, 'discussion_limit': 25},
     'discussion_5': {'discussions': 5, 'price': 50},
     'discussion_15': {'discussions': 15, 'price': 120},
 }
@@ -27,22 +27,22 @@ async def show_solution_packages(callback: CallbackQuery):
 
 **🟢 Starter** — 5 решений
 • Цена: 100 ⭐️ (~$2)
-• Базовых вопросов в обсуждении: 3
+• Лимит вопросов в обсуждении: 10
 
 **🔵 Medium** — 15 решений
 • Цена: 250 ⭐️ (~$5)
-• Базовых вопросов в обсуждении: 5
+• Лимит вопросов в обсуждении: 15
 
-**🟣 Large** — 50 решений
-• Цена: 700 ⭐️ (~$14)
-• Базовых вопросов в обсуждении: 10
+**🟣 Large** — 30 решений
+• Цена: 500 ⭐️ (~$10)
+• Лимит вопросов в обсуждении: 25
 
 Решения не сгорают — используй когда удобно!"""
 
     builder = InlineKeyboardBuilder()
     builder.button(text="🟢 Starter (100⭐️)", callback_data="buy_starter")
     builder.button(text="🔵 Medium (250⭐️)", callback_data="buy_medium")
-    builder.button(text="🟣 Large (700⭐️)", callback_data="buy_large")
+    builder.button(text="🟣 Large (500⭐️)", callback_data="buy_large")
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.button(text="🔙 Назад", callback_data="back_to_menu")
     builder.adjust(1)
@@ -84,7 +84,7 @@ async def buy_starter_package(callback: CallbackQuery):
         callback,
         package_type='starter',
         title="Starter Package - 5 решений",
-        description="5 решений проблем + 3 базовых вопроса в обсуждении"
+        description="5 решений проблем + лимит 10 вопросов в обсуждении"
     )
 
 
@@ -95,7 +95,7 @@ async def buy_medium_package(callback: CallbackQuery):
         callback,
         package_type='medium',
         title="Medium Package - 15 решений",
-        description="15 решений проблем + 5 базовых вопросов в обсуждении"
+        description="15 решений проблем + лимит 15 вопросов в обсуждении"
     )
 
 
@@ -105,8 +105,8 @@ async def buy_large_package(callback: CallbackQuery):
     await initiate_package_payment(
         callback,
         package_type='large',
-        title="Large Package - 50 решений",
-        description="50 решений проблем + 10 базовых вопросов в обсуждении"
+        title="Large Package - 30 решений",
+        description="30 решений проблем + лимит 25 вопросов в обсуждении"
     )
 
 
@@ -187,7 +187,7 @@ async def process_successful_payment(message: Message):
 
 ✅ Добавлено решений: {package['solutions']}
 💳 Всего доступно: {user.problems_remaining}
-💬 Базовых вопросов в обсуждении: {package['discussion_base']}
+💬 Лимит вопросов в обсуждении: {package['discussion_limit']}
 
 Готов решать проблемы! 🚀"""
         else:

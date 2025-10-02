@@ -17,7 +17,7 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     username: Mapped[Optional[str]] = mapped_column(String(32))
     first_name: Mapped[str] = mapped_column(String(64), nullable=False)
-    problems_remaining: Mapped[int] = mapped_column(Integer, default=1)
+    problems_remaining: Mapped[int] = mapped_column(Integer, default=3)  # Increased from 1 to 3
     discussion_credits: Mapped[int] = mapped_column(Integer, default=0)
     last_purchased_package: Mapped[Optional[str]] = mapped_column(String(20))  # 'starter', 'medium', 'large'
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

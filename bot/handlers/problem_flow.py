@@ -12,6 +12,12 @@ from bot.services.prompt_builder import PromptBuilder
 from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_user_by_telegram_id, create_problem
 from bot.database.models import Problem
+from bot.config import (
+    FREE_DISCUSSION_QUESTIONS,
+    STARTER_DISCUSSION_LIMIT,
+    MEDIUM_DISCUSSION_LIMIT,
+    LARGE_DISCUSSION_LIMIT
+)
 from sqlalchemy import select
 
 router = Router()
@@ -49,19 +55,12 @@ async def start_new_problem(callback: CallbackQuery, state: FSMContext):
 
 @router.message(ProblemSolvingStates.waiting_for_problem)
 async def receive_problem(message: Message, state: FSMContext):
-    """Analyze problem type"""
+    """Start problem analysis (simplified - no pre-analysis)"""
     problem_text = message.text
 
-    await message.answer("🔍 Анализирую проблему...")
-
-    # Analyze with Claude
-    analysis = await claude.analyze_problem_type(problem_text)
-
-    # Save to state
+    # Save to state (no methodology analysis needed)
     await state.update_data(
         problem_description=problem_text,
-        problem_type=analysis['type'],
-        methodology=analysis['methodology'],
         conversation_history=[],
         current_step=1
     )
@@ -72,24 +71,19 @@ async def receive_problem(message: Message, state: FSMContext):
 
         problem = await create_problem(
             session, user.id, problem_text,
-            analysis['type'], analysis['methodology']
+            problem_type=None,  # Claude will determine internally
+            methodology=None    # No fixed methodology
         )
         await state.update_data(problem_id=problem.id)
 
         # Decrement problem credits
         user.problems_remaining -= 1
+        remaining = user.problems_remaining
         await session.commit()
 
-    methodology_names = {
-        '5_whys': '5 Почему',
-        'fishbone': 'Fishbone',
-        'first_principles': 'First Principles'
-    }
-
     await message.answer(
-        f"✅ Тип проблемы: **{analysis['type']}**\n"
-        f"📊 Методика: **{methodology_names.get(analysis['methodology'], analysis['methodology'])}**\n\n"
-        f"Задам несколько вопросов для глубокого анализа 👇"
+        f"✅ Принял! Задам несколько вопросов для глубокого анализа.\n\n"
+        f"💳 Решений осталось: {remaining}"
     )
 
     # Ask first question
@@ -105,7 +99,6 @@ async def ask_next_question(message: Message, state: FSMContext):
     await message.answer("🤔 Думаю над вопросом...")
 
     question = await claude.generate_question(
-        methodology=data['methodology'],
         problem_description=data['problem_description'],
         conversation_history=data['conversation_history'],
         step=data['current_step']
@@ -170,35 +163,12 @@ async def generate_final_solution(message: Message, state: FSMContext):
     # Show thinking indicator
     await message.answer("🎯 Генерирую решение...")
 
-    solution = await claude.generate_solution(
+    solution_text = await claude.generate_solution(
         problem_description=data['problem_description'],
-        methodology=data['methodology'],
         conversation_history=data['conversation_history']
     )
 
-    # Format solution message
-    solution_text = f"""🎯 *КОРНЕВАЯ ПРИЧИНА:*
-{solution['root_cause']}
-
-📊 *АНАЛИЗ:*
-• Методика: {solution['analysis']['methodology']}
-• Факторы: {', '.join(solution['analysis']['key_factors'][:3])}
-
-📋 *ПЛАН ДЕЙСТВИЙ:*
-
-*Сейчас (24ч):*
-{chr(10).join(['□ ' + a for a in solution['action_plan']['immediate']])}
-
-*Эта неделя:*
-{chr(10).join(['□ ' + a for a in solution['action_plan']['this_week']])}
-
-*Долгосрочно:*
-{chr(10).join(['□ ' + a for a in solution['action_plan']['long_term']])}
-
-📈 *МЕТРИКИ:*
-{chr(10).join([f"• {m['what']} → {m['target']}" for m in solution['metrics']])}"""
-
-    # Send without parse_mode to avoid markdown conflicts
+    # Send solution (it's already formatted with emojis)
     await message.answer(solution_text, parse_mode=None)
 
     # Save to DB
@@ -209,8 +179,8 @@ async def generate_final_solution(message: Message, state: FSMContext):
         problem = result.scalar_one_or_none()
 
         if problem:
-            problem.root_cause = solution['root_cause']
-            problem.action_plan = json.dumps(solution['action_plan'], ensure_ascii=False)
+            problem.root_cause = solution_text[:500]  # Store first 500 chars
+            problem.action_plan = solution_text  # Store full solution
             problem.status = 'solved'
             problem.solved_at = datetime.utcnow()
             await session.commit()
@@ -252,11 +222,11 @@ async def start_discussion(callback: CallbackQuery, state: FSMContext):
 
         # Determine base discussion limit from last package
         base_limits = {
-            'starter': 3,
-            'medium': 5,
-            'large': 10
+            'starter': STARTER_DISCUSSION_LIMIT,
+            'medium': MEDIUM_DISCUSSION_LIMIT,
+            'large': LARGE_DISCUSSION_LIMIT
         }
-        base_limit = base_limits.get(user.last_purchased_package, 3)
+        base_limit = base_limits.get(user.last_purchased_package, FREE_DISCUSSION_QUESTIONS)
 
         data = await state.get_data()
         questions_used = data.get('discussion_questions_used', 0)
@@ -297,11 +267,11 @@ async def handle_discussion_question(message: Message, state: FSMContext):
 
         # Determine limits
         base_limits = {
-            'starter': 3,
-            'medium': 5,
-            'large': 10
+            'starter': STARTER_DISCUSSION_LIMIT,
+            'medium': MEDIUM_DISCUSSION_LIMIT,
+            'large': LARGE_DISCUSSION_LIMIT
         }
-        base_limit = base_limits.get(user.last_purchased_package, 3)
+        base_limit = base_limits.get(user.last_purchased_package, FREE_DISCUSSION_QUESTIONS)
 
         data = await state.get_data()
         questions_used = data.get('discussion_questions_used', 0)
@@ -327,7 +297,6 @@ async def handle_discussion_question(message: Message, state: FSMContext):
         conversation_history.append({"role": "user", "content": message.text})
 
         answer = await claude.generate_question(
-            methodology=data.get('methodology', '5_whys'),
             problem_description=data.get('problem_description', ''),
             conversation_history=conversation_history,
             step=questions_used + 1
