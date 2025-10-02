@@ -47,8 +47,8 @@ async def start_new_problem(callback: CallbackQuery, state: FSMContext):
             return
 
     await callback.message.answer(
-        "🎯 Опиши свою проблему в 2-3 предложениях.\n\n"
-        "Что происходит и почему это важно решить?"
+        "🎯 Опиши свою проблему своими словами.\n\n"
+        "Расскажи что происходит — коротко или подробно, как тебе удобно."
     )
     await state.set_state(ProblemSolvingStates.waiting_for_problem)
     await callback.answer()
@@ -83,8 +83,7 @@ async def receive_problem(message: Message, state: FSMContext):
         await session.commit()
 
     await message.answer(
-        f"✅ Принял! Задам несколько вопросов для глубокого анализа.\n\n"
-        f"💳 Решений осталось: {remaining}"
+        "✅ Понял. Задам несколько вопросов для глубокого анализа."
     )
 
     # Ask first question
@@ -135,7 +134,7 @@ async def ask_next_question(message: Message, state: FSMContext):
     builder.adjust(1)
 
     await message.answer(
-        f"❓ Вопрос {data['current_step']}/5:\n\n{question}",
+        question,
         reply_markup=builder.as_markup()
     )
 

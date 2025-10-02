@@ -28,13 +28,14 @@ async def show_problems_list(callback: CallbackQuery):
                 text=f"{status_emoji} {title}",
                 callback_data=f"view_problem_{p.id}"
             )
-        builder.button(text="🔙 Назад", callback_data="back_to_menu")
         builder.adjust(1)
 
+        from bot.keyboards import get_main_menu_keyboard
         await callback.message.answer(
             "📖 **История решений:**",
             reply_markup=builder.as_markup()
         )
+        await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
 
     await callback.answer()
 
@@ -69,14 +70,17 @@ async def view_problem_detail(callback: CallbackQuery):
 
         builder = InlineKeyboardBuilder()
         builder.button(text="🔙 К списку", callback_data="my_problems")
+        builder.adjust(1)
 
+        from bot.keyboards import get_main_menu_keyboard
         await callback.message.answer(text, reply_markup=builder.as_markup())
+        await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
 
     await callback.answer()
 
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery):
-    """Return to main menu"""
-    from bot.handlers.start import cmd_start
-    await cmd_start(callback.message)
+    """Return to main menu (legacy - now menu always visible)"""
+    from bot.keyboards import get_main_menu_keyboard
+    await callback.message.answer("Главное меню:", reply_markup=get_main_menu_keyboard())
     await callback.answer()
