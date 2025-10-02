@@ -217,14 +217,13 @@ async def generate_final_solution(message: Message, state: FSMContext):
             await session.commit()
 
     # Offer discussion option
-    data = await state.get_data()
     await state.update_data(discussion_questions_used=0)
 
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
     builder.adjust(1)
 
-    await message.answer("Что дальше?", reply_markup=builder.as_markup())
+    await message.answer("​", reply_markup=builder.as_markup())  # Zero-width space to show only button
 
 
 @router.callback_query(F.data == "skip_question")
