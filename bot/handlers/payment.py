@@ -46,9 +46,7 @@ async def show_solution_packages(callback: CallbackQuery):
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 
-    from bot.keyboards import get_main_menu_keyboard
     await callback.message.answer(text, reply_markup=builder.as_markup())
-    await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
     await callback.answer()
 
 
@@ -74,9 +72,7 @@ async def show_discussion_packages(callback: CallbackQuery):
     builder.button(text="🔙 К пакетам решений", callback_data="buy_solutions")
     builder.adjust(1)
 
-    from bot.keyboards import get_main_menu_keyboard
     await callback.message.answer(text, reply_markup=builder.as_markup())
-    await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
     await callback.answer()
 
 
