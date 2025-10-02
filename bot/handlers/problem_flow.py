@@ -223,7 +223,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
     builder.adjust(1)
 
-    await message.answer("​", reply_markup=builder.as_markup())  # Zero-width space to show only button
+    await message.answer(".", reply_markup=builder.as_markup())  # Minimal text to show only button
 
 
 @router.callback_query(F.data == "skip_question")
