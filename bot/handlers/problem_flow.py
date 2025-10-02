@@ -199,8 +199,8 @@ async def generate_final_solution(message: Message, state: FSMContext):
     # Delete processing message
     await processing_msg.delete()
 
-    # Send solution (it's already formatted with emojis)
-    await message.answer(solution_text, parse_mode=None)
+    # Send solution with Markdown formatting
+    await message.answer(solution_text, parse_mode="Markdown")
 
     # Save to DB
     async with AsyncSessionLocal() as session:
@@ -224,9 +224,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
     builder.adjust(1)
 
-    from bot.keyboards import get_main_menu_keyboard
     await message.answer("Что дальше?", reply_markup=builder.as_markup())
-    await message.answer("Используй меню для навигации 👇", reply_markup=get_main_menu_keyboard())
 
 
 @router.callback_query(F.data == "skip_question")
