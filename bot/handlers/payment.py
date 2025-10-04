@@ -21,15 +21,46 @@ logger = structlog.get_logger()
 
 
 # ============================================================================
-# LEVEL 1: Package selection (no prices, just features)
+# LEVEL 0: Purchase type selection (NEW - subscriptions vs packages)
 # ============================================================================
 
 @router.callback_query(F.data == "buy_solutions")
-async def show_solution_packages(callback: CallbackQuery):
-    """Show solution package and subscription options (Level 1)"""
-    text = """💳 <b>Выбери пакет</b>
+async def show_purchase_type_selection(callback: CallbackQuery):
+    """Show purchase type selection: subscriptions vs one-time packages (Level 0)"""
+    text = """💳 <b>Что тебе удобнее?</b>
 
-<b>📅 ПОДПИСКИ (ежемесячно):</b>
+<b>📅 Подписка</b>
+• Автопродление каждый месяц
+• Не нужно каждый раз покупать
+• Выгоднее при регулярном использовании
+
+<b>💰 Разовые пакеты</b>
+• Покупаешь один раз
+• Решения не сгорают
+• Используешь когда удобно
+
+<b>💬 Вопросы для обсуждения</b>
+• Дополнительные вопросы после решения
+• Для более глубокого анализа"""
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📅 Подписки", callback_data="show_subscriptions")
+    builder.button(text="💰 Разовые пакеты", callback_data="show_packages")
+    builder.button(text="💬 Вопросы для обсуждения", callback_data="buy_discussions")
+    builder.adjust(1)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+# ============================================================================
+# LEVEL 1: Package selection (subscriptions OR packages separately)
+# ============================================================================
+
+@router.callback_query(F.data == "show_subscriptions")
+async def show_subscriptions(callback: CallbackQuery):
+    """Show only subscription options (Level 1)"""
+    text = """📅 <b>Выбери подписку</b>
 
 <b>Стандарт</b>
 • 15 решений каждый месяц
@@ -44,9 +75,22 @@ async def show_solution_packages(callback: CallbackQuery):
 • Приоритетная обработка
 • Автопродление
 
-━━━━━━━━━━━━━━━
+<i>💡 Подписка продлевается автоматически</i>"""
 
-<b>💰 РАЗОВЫЕ ПАКЕТЫ:</b>
+    builder = InlineKeyboardBuilder()
+    builder.button(text="📅 Стандарт", callback_data="select_package_subscription_standard")
+    builder.button(text="📅 Премиум", callback_data="select_package_subscription_premium")
+    builder.button(text="◀️ Назад", callback_data="buy_solutions")
+    builder.adjust(1)
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "show_packages")
+async def show_packages(callback: CallbackQuery):
+    """Show only one-time packages (Level 1)"""
+    text = """💰 <b>Выбери пакет</b>
 
 <b>Стартовый</b>
 • 5 решений проблем
@@ -63,14 +107,10 @@ async def show_solution_packages(callback: CallbackQuery):
 <i>💡 Решения не сгорают — используй когда удобно!</i>"""
 
     builder = InlineKeyboardBuilder()
-    # Subscriptions
-    builder.button(text="📅 Подписка Стандарт", callback_data="select_package_subscription_standard")
-    builder.button(text="📅 Подписка Премиум", callback_data="select_package_subscription_premium")
-    # One-time packages
     builder.button(text="📦 Стартовый", callback_data="select_package_starter")
     builder.button(text="📦 Средний", callback_data="select_package_medium")
     builder.button(text="📦 Большой", callback_data="select_package_large")
-    builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
+    builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
