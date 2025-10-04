@@ -245,10 +245,15 @@ async def generate_final_solution(message: Message, state: FSMContext):
         if not solution_ready:
             message_index = (message_index + 1) % len(status_messages)
             try:
-                await current_msg.delete()
-                current_msg = await message.answer(status_messages[message_index])
-            except Exception:
-                pass  # Ignore errors
+                # Edit existing message instead of deleting/creating
+                await current_msg.edit_text(status_messages[message_index])
+            except Exception as e:
+                # If edit fails, try delete and create new
+                try:
+                    await current_msg.delete()
+                    current_msg = await message.answer(status_messages[message_index])
+                except Exception:
+                    pass  # Ignore all errors
 
     # Wait for generation to fully complete
     await generation_task
