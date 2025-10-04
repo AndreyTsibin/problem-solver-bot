@@ -49,7 +49,10 @@ async def show_purchase_type_selection(callback: CallbackQuery):
     builder.button(text="💬 Вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -83,7 +86,10 @@ async def show_subscriptions(callback: CallbackQuery):
     builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -113,7 +119,10 @@ async def show_packages(callback: CallbackQuery):
     builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -139,7 +148,10 @@ async def show_discussion_packages(callback: CallbackQuery):
     builder.button(text="◀️ К пакетам решений", callback_data="buy_solutions")
     builder.adjust(1)
 
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -214,7 +226,10 @@ async def show_payment_methods(callback: CallbackQuery):
 
     builder.adjust(1)
 
-    await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    try:
+        await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode="HTML")
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -564,33 +579,3 @@ async def buy_large_package(callback: CallbackQuery):
     ))
 
 
-@router.callback_query(F.data == "buy_subscription_standard")
-async def buy_subscription_standard(callback: CallbackQuery):
-    """Purchase Standard subscription (legacy handler)"""
-    await show_payment_methods(callback.__class__(
-        **{**callback.__dict__, 'data': 'select_package_subscription_standard'}
-    ))
-
-
-@router.callback_query(F.data == "buy_subscription_premium")
-async def buy_subscription_premium(callback: CallbackQuery):
-    """Purchase Premium subscription (legacy handler)"""
-    await show_payment_methods(callback.__class__(
-        **{**callback.__dict__, 'data': 'select_package_subscription_premium'}
-    ))
-
-
-@router.callback_query(F.data == "subscribe_standard")
-async def subscribe_standard(callback: CallbackQuery):
-    """Subscribe to Standard plan (legacy handler)"""
-    await show_payment_methods(callback.__class__(
-        **{**callback.__dict__, 'data': 'select_package_subscription_standard'}
-    ))
-
-
-@router.callback_query(F.data == "subscribe_premium")
-async def subscribe_premium(callback: CallbackQuery):
-    """Subscribe to Premium plan (legacy handler)"""
-    await show_payment_methods(callback.__class__(
-        **{**callback.__dict__, 'data': 'select_package_subscription_premium'}
-    ))

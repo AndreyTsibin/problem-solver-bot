@@ -62,10 +62,15 @@ async def view_problem_detail(callback: CallbackQuery):
             text += f"🎯 **Причина:**\n{problem.root_cause}\n\n"
 
         if problem.action_plan:
-            plan = json.loads(problem.action_plan)
-            text += "📋 **План:**\n"
-            for action in plan.get('immediate', [])[:2]:
-                text += f"□ {action}\n"
+            # Try to parse as JSON (old format), fallback to plain text (new format)
+            try:
+                plan = json.loads(problem.action_plan)
+                text += "📋 **План:**\n"
+                for action in plan.get('immediate', [])[:2]:
+                    text += f"□ {action}\n"
+            except (json.JSONDecodeError, TypeError):
+                # New format: plain text
+                text += f"💡 **Решение:**\n{problem.action_plan[:200]}..."
 
         builder = InlineKeyboardBuilder()
         builder.button(text="🔙 К списку", callback_data="my_problems")
