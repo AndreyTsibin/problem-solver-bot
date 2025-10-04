@@ -178,162 +178,99 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution with status message and typing indicator"""
+    """Generate and show final solution with status messages cycling every 4 seconds"""
     data = await state.get_data()
     await state.set_state(ProblemSolvingStates.generating_solution)
 
     bot = message.bot
     user_gender = data.get('user_gender')
 
-    # Send status message that will be edited to final solution
-    status_msg = await message.answer("⏳ Анализирую всю информацию и готовлю решение...")
+    # Shared state
+    solution_ready = False
+    solution_text = None
+    solution_error = None
 
-    # Send initial typing indicator immediately
-    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
-
-    # Manual typing indicator loop (runs until we stop it)
-    typing_active = True
-    status_updates_active = True
-
-    async def keep_typing():
-        """Keep sending typing action every 2.5 seconds to ensure it never expires"""
+    # Start Claude API call in background
+    async def generate_solution_bg():
+        nonlocal solution_ready, solution_text, solution_error
         try:
-            while typing_active:
-                # Send typing action first, then sleep
-                # This ensures typing is active even at the beginning of each cycle
-                if typing_active:
-                    try:
-                        await bot.send_chat_action(chat_id=message.chat.id, action="typing")
-                    except Exception:
-                        # Continue even if single send fails
-                        pass
-                # Sleep for 2.5 seconds (well before 5-second expiry)
-                await asyncio.sleep(2.5)
-        except asyncio.CancelledError:
-            # Gracefully handle cancellation
-            pass
-
-    async def update_status_messages():
-        """Update status message every 2 seconds by deleting and sending new"""
-        nonlocal status_msg
-        print("DEBUG: Status update task started")
-        try:
-            print("DEBUG: Sleeping 2 seconds...")
-            await asyncio.sleep(2)
-            print(f"DEBUG: After 2s sleep, status_updates_active={status_updates_active}")
-            if status_updates_active:
-                try:
-                    print("DEBUG: Deleting first message...")
-                    await status_msg.delete()
-                    print("DEBUG: Sending second message...")
-                    status_msg = await message.answer("⏳ Еще чуть-чуть, почти готов...")
-                    print("DEBUG: Second message sent!")
-                except Exception as e:
-                    print(f"Failed to update status 1: {e}")
-            else:
-                print("DEBUG: status_updates_active is False, skipping first update")
-
-            print("DEBUG: Sleeping another 2 seconds...")
-            await asyncio.sleep(2)
-            print(f"DEBUG: After 4s sleep, status_updates_active={status_updates_active}")
-            if status_updates_active:
-                try:
-                    print("DEBUG: Deleting second message...")
-                    await status_msg.delete()
-                    print("DEBUG: Sending third message...")
-                    status_msg = await message.answer("⏳ Финальные штрихи...")
-                    print("DEBUG: Third message sent!")
-                except Exception as e:
-                    print(f"Failed to update status 2: {e}")
-            else:
-                print("DEBUG: status_updates_active is False, skipping second update")
-        except asyncio.CancelledError:
-            print("DEBUG: Status update task cancelled")
-        except Exception as e:
-            print(f"Status update error: {e}")
-
-    # Start typing loop and status updates in background
-    typing_task = asyncio.create_task(keep_typing())
-    status_update_task = asyncio.create_task(update_status_messages())
-    print("DEBUG: Both tasks started")
-
-    # Give tasks a chance to start before Claude API call
-    await asyncio.sleep(0.01)
-    print("DEBUG: Starting Claude API call...")
-
-    try:
-
-        # Generate solution
-        solution_text = await claude.generate_solution(
-            problem_description=data['problem_description'],
-            conversation_history=data['conversation_history'],
-            gender=user_gender
-        )
-
-        # Save to DB
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Problem).where(Problem.id == data['problem_id'])
+            result = await claude.generate_solution(
+                problem_description=data['problem_description'],
+                conversation_history=data['conversation_history'],
+                gender=user_gender
             )
-            problem = result.scalar_one_or_none()
 
-            if problem:
-                problem.root_cause = solution_text[:500]
-                problem.action_plan = solution_text
-                problem.status = 'solved'
-                problem.solved_at = datetime.utcnow()
-                await session.commit()
+            # Save to DB
+            async with AsyncSessionLocal() as session:
+                db_result = await session.execute(
+                    select(Problem).where(Problem.id == data['problem_id'])
+                )
+                problem = db_result.scalar_one_or_none()
 
-        # Prepare discussion option
-        await state.update_data(discussion_questions_used=0)
+                if problem:
+                    problem.root_cause = result[:500]
+                    problem.action_plan = result
+                    problem.status = 'solved'
+                    problem.solved_at = datetime.utcnow()
+                    await session.commit()
 
-        builder = InlineKeyboardBuilder()
-        builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
-        builder.adjust(1)
+            solution_text = result
+            solution_ready = True
+        except Exception as e:
+            solution_error = e
+            solution_ready = True
 
-        # ALL processing is complete (generation + DB save) - stop typing
-        typing_active = False
-        typing_task.cancel()
-        try:
-            await typing_task
-        except asyncio.CancelledError:
-            pass
+    # Start generation in background
+    generation_task = asyncio.create_task(generate_solution_bg())
 
-        # Wait a tiny bit to let status updates complete if they're in progress
-        await asyncio.sleep(0.1)
+    # Cycle through status messages every 4 seconds
+    status_messages = [
+        "⏳ Анализирую всю информацию и готовлю решение...",
+        "⏳ Еще чуть-чуть, почти готов...",
+        "⏳ Финальные штрихи..."
+    ]
 
-        # Stop status updates and delete any remaining status message
-        status_updates_active = False
-        status_update_task.cancel()
-        try:
-            await status_update_task
-        except asyncio.CancelledError:
-            pass
+    current_msg = await message.answer(status_messages[0])
+    message_index = 0
 
-        # Delete status message and send final solution as new message
-        try:
-            await status_msg.delete()
-        except Exception:
-            pass  # Message might have been already deleted by status updater
+    # Keep showing status messages until solution is ready
+    while not solution_ready:
+        # Send typing indicator
+        await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-        await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
+        # Wait 4 seconds
+        await asyncio.sleep(4)
 
-    except Exception as e:
-        # Stop typing indicator and status updates on any error
-        typing_active = False
-        status_updates_active = False
-        typing_task.cancel()
-        status_update_task.cancel()
-        try:
-            await typing_task
-        except asyncio.CancelledError:
-            pass
-        try:
-            await status_update_task
-        except asyncio.CancelledError:
-            pass
-        # Re-raise the exception
-        raise e
+        # If still not ready, update message
+        if not solution_ready:
+            message_index = (message_index + 1) % len(status_messages)
+            try:
+                await current_msg.delete()
+                current_msg = await message.answer(status_messages[message_index])
+            except Exception:
+                pass  # Ignore errors
+
+    # Wait for generation to fully complete
+    await generation_task
+
+    # Delete status message
+    try:
+        await current_msg.delete()
+    except Exception:
+        pass
+
+    # Show result or error
+    if solution_error:
+        raise solution_error
+
+    # Prepare discussion option
+    await state.update_data(discussion_questions_used=0)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
+    builder.adjust(1)
+
+    await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
 
 # Discussion system handlers
