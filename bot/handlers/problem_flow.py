@@ -207,21 +207,23 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     await state.set_state(ProblemSolvingStates.generating_solution)
 
-    # Get user's gender from database
-    async with AsyncSessionLocal() as session:
-        user = await get_user_by_telegram_id(session, message.from_user.id)
-        user_gender = user.gender if user else None
-
     bot = message.bot
 
-    # STEP 1: Start Claude API in background
-    solution_task = asyncio.create_task(
-        claude.generate_solution(
+    # STEP 1: Get user gender and start Claude API immediately
+    async def generate_with_gender():
+        """Get gender and call Claude API"""
+        async with AsyncSessionLocal() as session:
+            user = await get_user_by_telegram_id(session, message.from_user.id)
+            user_gender = user.gender if user else None
+
+        return await claude.generate_solution(
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
             gender=user_gender
         )
-    )
+
+    # Start solution generation in background immediately
+    solution_task = asyncio.create_task(generate_with_gender())
 
     # STEP 2: Start typing indicator in background
     typing_active = True
