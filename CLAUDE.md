@@ -171,11 +171,18 @@ The bot uses aiogram's Finite State Machine to manage multi-step dialogues:
 State data is stored in FSM context, conversation history saved to database.
 
 #### 2. Optimized Prompt System
-The `PromptBuilder` class contains a single, comprehensive system prompt (~5K tokens):
+The `PromptBuilder` class contains a single, comprehensive system prompt (~6K tokens):
 - One unified prompt with all coaching techniques and guidelines
 - No external files loaded (massive token savings vs old 50K approach)
 - Claude uses its internal knowledge of methodologies (5 Why's, Fishbone, First Principles, etc.)
 - All prompts support UTF-8 Russian text
+- **Enhanced with Anthropic best practices** (based on Claude Code 2.0 & Sonnet 4.5 system prompts):
+  - Zero Fluff Principle: no filler phrases ("Отлично!", "Хороший вопрос!")
+  - Professional Honesty: challenging user beliefs instead of validating
+  - Question Variability: 8 different question starters to avoid repetition
+  - Step-by-Step Thinking: internal `<thinking>` before solution generation
+  - Adaptive Style: different tones for emotional/business/motivation problems
+  - Quality Check: 5-point verification before sending solution
 
 #### 3. Claude API Integration (Optimized)
 `ClaudeService` provides two streamlined operations:
@@ -469,6 +476,58 @@ solution_text = await claude.generate_solution(
 - [scripts/backup.sh](scripts/backup.sh) - Database backup
 - [scripts/logs.sh](scripts/logs.sh) - Interactive log viewer
 - [scripts/README.md](scripts/README.md) - Scripts documentation
+
+## Prompt Engineering Best Practices
+
+The bot's prompts are optimized using patterns from Anthropic's official system prompts (Claude Code 2.0 & Sonnet 4.5).
+
+### 8 Key Patterns Implemented
+
+**1. Zero Fluff Principle**
+- No filler phrases: "Отлично!", "Хороший вопрос!", "Давай разберёмся"
+- Direct to the point: questions and solutions without preamble
+- Source: Claude Code 2.0 "minimize output tokens" principle
+
+**2. Professional Honesty**
+- Challenge user beliefs instead of validating
+- Example: "Ты считаешь проблема в коллегах. Но возможно дело в отсутствии границ с твоей стороны."
+- Source: Claude Code "Prioritize technical accuracy over validating user's beliefs"
+
+**3. Question Variability**
+- 8 different question starters to avoid repetition
+- Prevents "Расскажи подробнее о..." appearing in every question
+- Source: Sonnet 4.5 "avoids using rote words or phrases repeatedly"
+
+**4. Step-by-Step Thinking**
+- Internal thinking process before generating solution (not shown to user)
+- 5-point checklist: root cause, pattern, trap, failed attempts, quick win
+- Source: Sonnet 4.5 "thinks through it step by step before giving final answer"
+
+**5. Adaptive Style**
+- Different tones for: emotional problems, business/career, procrastination
+- Adjust empathy level based on problem type
+- Source: Sonnet 4.5 "tailors response format to suit conversation topic"
+
+**6. Quality Check Before Sending**
+- 5-point verification: new insight, quick win, new advice, no willpower needed, concrete details
+- Prevents generic/unhelpful solutions
+- Source: Claude Code task completion requirements
+
+**7. Conciseness with Detail Balance**
+- Questions: max 40 words (tightened from 50)
+- Solutions: max 1500 characters
+- Discussion: max 100 words (tightened from 150)
+- Source: Claude Code "minimize output tokens while maintaining quality"
+
+**8. Gender-Adaptive Communication**
+- Male: metrics, logic, systems (no empathy fluff)
+- Female: context, emotions (1-phrase validation → tools)
+- Balanced approach based on psychological research
+
+### References
+- **Claude Code 2.0 System Prompt** (Sep 2025): Conciseness, zero fluff, professional objectivity
+- **Sonnet 4.5 System Prompt** (Sep 2025): Step-by-step thinking, adaptive style, variability
+- **Repository:** https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/tree/main/Anthropic
 
 ## Troubleshooting
 
