@@ -216,29 +216,46 @@ async def generate_final_solution(message: Message, state: FSMContext):
     async def update_status_messages():
         """Update status message every 4 seconds by deleting and sending new"""
         nonlocal status_msg
+        print("DEBUG: Status update task started")
         try:
+            print("DEBUG: Sleeping 4 seconds...")
             await asyncio.sleep(4)
+            print(f"DEBUG: After 4s sleep, status_updates_active={status_updates_active}")
             if status_updates_active:
                 try:
+                    print("DEBUG: Deleting first message...")
                     await status_msg.delete()
+                    print("DEBUG: Sending second message...")
                     status_msg = await message.answer("⏳ Еще чуть-чуть, почти готов...")
+                    print("DEBUG: Second message sent!")
                 except Exception as e:
                     print(f"Failed to update status 1: {e}")
+            else:
+                print("DEBUG: status_updates_active is False, skipping first update")
+
+            print("DEBUG: Sleeping another 4 seconds...")
             await asyncio.sleep(4)
+            print(f"DEBUG: After 8s sleep, status_updates_active={status_updates_active}")
             if status_updates_active:
                 try:
+                    print("DEBUG: Deleting second message...")
                     await status_msg.delete()
+                    print("DEBUG: Sending third message...")
                     status_msg = await message.answer("⏳ Финальные штрихи...")
+                    print("DEBUG: Third message sent!")
                 except Exception as e:
                     print(f"Failed to update status 2: {e}")
+            else:
+                print("DEBUG: status_updates_active is False, skipping second update")
         except asyncio.CancelledError:
-            pass
+            print("DEBUG: Status update task cancelled")
         except Exception as e:
             print(f"Status update error: {e}")
 
     # Start typing loop and status updates in background
     typing_task = asyncio.create_task(keep_typing())
     status_update_task = asyncio.create_task(update_status_messages())
+    print("DEBUG: Both tasks started")
 
     try:
 
@@ -270,22 +287,32 @@ async def generate_final_solution(message: Message, state: FSMContext):
         builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
         builder.adjust(1)
 
-        # ALL processing is complete (generation + DB save) - now stop typing and status updates
+        # ALL processing is complete (generation + DB save) - stop typing
         typing_active = False
-        status_updates_active = False
         typing_task.cancel()
-        status_update_task.cancel()
         try:
             await typing_task
         except asyncio.CancelledError:
             pass
+
+        # Wait a tiny bit to let status updates complete if they're in progress
+        await asyncio.sleep(0.1)
+
+        # Stop status updates and delete any remaining status message
+        status_updates_active = False
+        status_update_task.cancel()
         try:
             await status_update_task
         except asyncio.CancelledError:
             pass
 
-        # Edit status message to show final solution
-        await status_msg.edit_text(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
+        # Delete status message and send final solution as new message
+        try:
+            await status_msg.delete()
+        except Exception:
+            pass  # Message might have been already deleted by status updater
+
+        await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
     except Exception as e:
         # Stop typing indicator and status updates on any error
