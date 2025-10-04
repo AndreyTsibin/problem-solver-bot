@@ -180,7 +180,7 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution (simplified - typing indicator only)"""
+    """Generate and show final solution with typing indicator until message is sent"""
     data = await state.get_data()
     await state.set_state(ProblemSolvingStates.generating_solution)
 
@@ -190,7 +190,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-    # Keep typing indicator active during entire process (Claude + DB save)
+    # Keep typing indicator active during ENTIRE process (including message send)
     async with ChatActionSender(
         bot=bot,
         chat_id=message.chat.id,
@@ -226,8 +226,10 @@ async def generate_final_solution(message: Message, state: FSMContext):
         builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
         builder.adjust(1)
 
-    # Send solution (typing stops automatically before this)
-    await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
+        # Send solution WHILE typing is still active
+        await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
+
+    # Typing stops automatically after message is sent
 
 
 # Discussion system handlers
