@@ -1,25 +1,26 @@
 # Problem Solver Bot — умный коуч для решения проблем
 
-AI-powered Telegram bot that helps analyze and solve problems systematically using proven methodologies.
+AI-powered Telegram bot that helps analyze and solve problems systematically using Claude AI.
 
 ## Description
 
-Problem Solver Bot — это твой личный коуч по решению проблем. Бот использует продвинутую AI (Claude) и проверенные аналитические методики, чтобы помочь найти корневую причину и создать конкретный план действий.
+Problem Solver Bot — это твой личный коуч по решению проблем. Бот использует Claude Sonnet 4.5 (последнюю модель Anthropic) для глубокого анализа проблем и создания конкретных планов действий.
 
-### Methodologies Used
+### How It Works
 
-- **5 Whys** — for linear cause-effect problems
-- **Fishbone (Ishikawa)** — for multifactor situations
-- **First Principles** — for complex systemic challenges
+Claude автономно определяет лучший подход для каждой проблемы, используя свои знания психологических и аналитических техник (5 Whys, Fishbone, First Principles и др.). Не нужно выбирать методологию — AI сам решает что подходит.
 
 ## Features
 
-- 🎯 Intelligent problem type analysis
-- 🤖 Interactive guided questioning
-- 📊 Structured action plans with PDCA framework
-- 💎 Premium access via Telegram Stars
-- 📋 Problem history tracking
-- 🔒 Secure data storage with SQLite
+- 🎯 **Умный анализ проблем** — Claude автоматически определяет тип проблемы и подход
+- 🤖 **Интерактивный диалог** — 3-5 уточняющих вопросов для глубокого понимания
+- 📊 **Структурированные решения** — готовый план действий с эмодзи для удобства
+- 💳 **Гибкие тарифы** — подписки (автопродление) и разовые пакеты
+- 💰 **Два способа оплаты** — Telegram Stars и банковские карты (YooKassa)
+- 🎁 **Реферальная программа** — +1 решение за каждого приглашенного друга
+- 💬 **Дополнительное обсуждение** — можно задать вопросы после получения решения
+- 📋 **История решений** — все проблемы сохраняются
+- 🔒 **Безопасность данных** — SQLite база с полной конфиденциальностью
 
 ## Tech Stack
 
@@ -88,10 +89,11 @@ problem-solver-bot/
 ## Usage
 
 1. Start a conversation with the bot in Telegram
-2. Press "🆕 Новая проблема" (New Problem)
-3. Describe your problem in 2-3 sentences
-4. Answer the bot's clarifying questions
+2. Press "🚀 Решить проблему" (Solve Problem)
+3. Describe your problem in detail
+4. Answer 3-5 clarifying questions from Claude
 5. Receive a structured solution with action plan
+6. (Optional) Ask follow-up questions if you have discussion credits
 
 ## Development
 

@@ -62,13 +62,13 @@ async def show_subscriptions(callback: CallbackQuery):
     """Show only subscription options (Level 1)"""
     text = """📅 <b>Выбери подписку</b>
 
-<b>Стандарт</b>
+<b>🔸 Стандарт</b>
 • 15 решений каждый месяц
 • 15 вопросов на обсуждение
 • История за 3 месяца
 • Автопродление
 
-<b>Премиум</b>
+<b>💎 Премиум</b>
 • 30 решений каждый месяц
 • 25 вопросов на обсуждение
 • Полная история решений
@@ -78,8 +78,8 @@ async def show_subscriptions(callback: CallbackQuery):
 <i>💡 Подписка продлевается автоматически</i>"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="📅 Стандарт", callback_data="select_package_subscription_standard")
-    builder.button(text="📅 Премиум", callback_data="select_package_subscription_premium")
+    builder.button(text="🔸 Стандарт", callback_data="select_package_subscription_standard")
+    builder.button(text="💎 Премиум", callback_data="select_package_subscription_premium")
     builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
@@ -92,24 +92,24 @@ async def show_packages(callback: CallbackQuery):
     """Show only one-time packages (Level 1)"""
     text = """💰 <b>Выбери пакет</b>
 
-<b>Стартовый</b>
+<b>📒 Стартовый</b>
 • 5 решений проблем
 • 10 вопросов на обсуждение
 
-<b>Средний</b>
+<b>📗 Средний</b>
 • 15 решений проблем
 • 15 вопросов на обсуждение
 
-<b>Большой</b>
+<b>📕 Большой</b>
 • 30 решений проблем
 • 25 вопросов на обсуждение
 
 <i>💡 Решения не сгорают — используй когда удобно!</i>"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="📦 Стартовый", callback_data="select_package_starter")
-    builder.button(text="📦 Средний", callback_data="select_package_medium")
-    builder.button(text="📦 Большой", callback_data="select_package_large")
+    builder.button(text="📒 Стартовый", callback_data="select_package_starter")
+    builder.button(text="📗 Средний", callback_data="select_package_medium")
+    builder.button(text="📕 Большой", callback_data="select_package_large")
     builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
@@ -134,8 +134,8 @@ async def show_discussion_packages(callback: CallbackQuery):
 <i>💡 Вопросы не сгорают — используй когда нужно!</i>"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="5 вопросов", callback_data="select_package_discussion_5")
-    builder.button(text="15 вопросов", callback_data="select_package_discussion_15")
+    builder.button(text="💬 5 вопросов", callback_data="select_package_discussion_5")
+    builder.button(text="💬 15 вопросов", callback_data="select_package_discussion_15")
     builder.button(text="◀️ К пакетам решений", callback_data="buy_solutions")
     builder.adjust(1)
 

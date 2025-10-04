@@ -65,11 +65,11 @@ async def handle_subscription_command(message: Message):
                 text = (
                     f"💳 <b>Решений на балансе:</b> {user.problems_remaining}\n\n"
                     f"Оформи подписку для безлимитного доступа!\n\n"
-                    f"<b>СТАНДАРТ</b> — 599₽/месяц\n"
+                    f"<b>🔸 СТАНДАРТ</b> — 599₽/месяц\n"
                     f"- 15 решений каждый месяц\n"
                     f"- 15 вопросов в обсуждении\n"
                     f"- История за 3 месяца\n\n"
-                    f"<b>ПРЕМИУМ</b> — 999₽/месяц\n"
+                    f"<b>💎 ПРЕМИУМ</b> — 999₽/месяц\n"
                     f"- 30 решений каждый месяц\n"
                     f"- 25 вопросов в обсуждении\n"
                     f"- Полная история\n"
@@ -79,11 +79,11 @@ async def handle_subscription_command(message: Message):
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(
-                        text="Стандарт (599₽)",
+                        text="🔸 Стандарт (599₽)",
                         callback_data="subscribe_standard"
                     )],
                     [InlineKeyboardButton(
-                        text="Премиум (999₽)",
+                        text="💎 Премиум (999₽)",
                         callback_data="subscribe_premium"
                     )],
                     [InlineKeyboardButton(
