@@ -171,7 +171,7 @@ async def receive_answer(message: Message, state: FSMContext):
     )
 
     # Check if done
-    if step > 5:
+    if step > 4:
         await generate_final_solution(message, state)
     else:
         await ask_next_question(message, state)
