@@ -140,6 +140,10 @@ class PromptBuilder:
 
 Можешь менять порядок в зависимости от ситуации.
 
+**КРИТИЧНО: НЕ ПОВТОРЯЙСЯ!**
+Перед каждым вопросом проверь — не спрашивал ли ты УЖЕ об этом?
+Каждый вопрос должен раскрывать НОВЫЙ аспект проблемы.
+
 **ЧТО ИСКАТЬ В ОТВЕТАХ:**
 🎯 Триггеры (что запускает проблему)
 🎯 Паттерны (что повторяется)
@@ -272,20 +276,18 @@ class PromptBuilder:
         current_step: int,
     ) -> str:
         """Build context for generating next question"""
-        # Only send last 2 Q&A pairs to save tokens
-        recent_history = conversation_history[-4:] if len(conversation_history) > 4 else conversation_history
-
+        # Send FULL conversation history - Claude needs full context to avoid repeating
         history_text = "\n".join([
             f"{'Q' if msg['role'] == 'assistant' else 'A'}: {msg['content']}"
-            for msg in recent_history
-        ]) if recent_history else "(начало)"
+            for msg in conversation_history
+        ]) if conversation_history else "(начало)"
 
         return f"""Проблема: {problem_description}
 
-История:
+Полная история диалога:
 {history_text}
 
-Вопрос {current_step}/4. Задай ОДИН уточняющий вопрос (макс 250 символов). Варьируй формулировку. Не повторяйся."""
+Вопрос {current_step}/4. Задай ОДИН уточняющий вопрос (макс 250 символов). Варьируй формулировку. НЕ повторяй темы из предыдущих вопросов."""
 
     def build_solution_context(
         self,
