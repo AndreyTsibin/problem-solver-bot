@@ -193,6 +193,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     # Manual typing indicator loop (runs until we stop it)
     typing_active = True
+    status_updates_active = True
 
     async def keep_typing():
         """Keep sending typing action every 2.5 seconds to ensure it never expires"""
@@ -216,10 +217,10 @@ async def generate_final_solution(message: Message, state: FSMContext):
         """Update status message every 4 seconds"""
         try:
             await asyncio.sleep(4)
-            if typing_active:
+            if status_updates_active:
                 await status_msg.edit_text("⏳ Еще чуть-чуть, почти готов...")
             await asyncio.sleep(4)
-            if typing_active:
+            if status_updates_active:
                 await status_msg.edit_text("⏳ Финальные штрихи...")
         except asyncio.CancelledError:
             pass
@@ -232,6 +233,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     status_update_task = asyncio.create_task(update_status_messages())
 
     try:
+
         # Generate solution
         solution_text = await claude.generate_solution(
             problem_description=data['problem_description'],
@@ -262,6 +264,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
         # ALL processing is complete (generation + DB save) - now stop typing and status updates
         typing_active = False
+        status_updates_active = False
         typing_task.cancel()
         status_update_task.cancel()
         try:
@@ -279,6 +282,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     except Exception as e:
         # Stop typing indicator and status updates on any error
         typing_active = False
+        status_updates_active = False
         typing_task.cancel()
         status_update_task.cancel()
         try:
