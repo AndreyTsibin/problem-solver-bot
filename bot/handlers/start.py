@@ -484,10 +484,7 @@ async def handle_gender_male(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         text=welcome_text,
-        parse_mode="HTML"
-    )
-    await callback.message.answer(
-        "Меню:",
+        parse_mode="HTML",
         reply_markup=get_main_menu_keyboard()
     )
     await callback.answer()
@@ -556,10 +553,7 @@ async def handle_gender_female(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         text=welcome_text,
-        parse_mode="HTML"
-    )
-    await callback.message.answer(
-        "Меню:",
+        parse_mode="HTML",
         reply_markup=get_main_menu_keyboard()
     )
     await callback.answer()

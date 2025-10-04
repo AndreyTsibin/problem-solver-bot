@@ -35,7 +35,6 @@ async def show_problems_list(callback: CallbackQuery):
             "📖 **История решений:**",
             reply_markup=builder.as_markup()
         )
-        await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
 
     await callback.answer()
 
@@ -72,9 +71,7 @@ async def view_problem_detail(callback: CallbackQuery):
         builder.button(text="🔙 К списку", callback_data="my_problems")
         builder.adjust(1)
 
-        from bot.keyboards import get_main_menu_keyboard
         await callback.message.answer(text, reply_markup=builder.as_markup())
-        await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
 
     await callback.answer()
 

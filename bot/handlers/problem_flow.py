@@ -277,7 +277,6 @@ async def start_discussion(callback: CallbackQuery, state: FSMContext):
                 "Купи дополнительные вопросы или используй меню для навигации 👇",
                 reply_markup=builder.as_markup()
             )
-            await callback.message.answer("Меню:", reply_markup=get_main_menu_keyboard())
             await callback.answer()
             return
 
@@ -315,12 +314,10 @@ async def handle_discussion_question(message: Message, state: FSMContext):
             builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
             builder.adjust(1)
 
-            from bot.keyboards import get_main_menu_keyboard
             await message.answer(
                 "❌ Лимит вопросов исчерпан!",
                 reply_markup=builder.as_markup()
             )
-            await message.answer("Меню:", reply_markup=get_main_menu_keyboard())
             return
 
         # Generate answer using Claude with typing indicator
@@ -377,9 +374,7 @@ async def handle_discussion_question(message: Message, state: FSMContext):
             builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
             builder.adjust(1)
 
-            from bot.keyboards import get_main_menu_keyboard
             await message.answer(
                 "✅ Вопросы закончились!",
                 reply_markup=builder.as_markup()
             )
-            await message.answer("Меню:", reply_markup=get_main_menu_keyboard())
