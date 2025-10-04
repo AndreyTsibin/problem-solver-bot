@@ -214,19 +214,27 @@ async def generate_final_solution(message: Message, state: FSMContext):
             pass
 
     async def update_status_messages():
-        """Update status message every 4 seconds"""
+        """Update status message every 4 seconds by deleting and sending new"""
+        nonlocal status_msg
         try:
             await asyncio.sleep(4)
             if status_updates_active:
-                await status_msg.edit_text("⏳ Еще чуть-чуть, почти готов...")
+                try:
+                    await status_msg.delete()
+                    status_msg = await message.answer("⏳ Еще чуть-чуть, почти готов...")
+                except Exception as e:
+                    print(f"Failed to update status 1: {e}")
             await asyncio.sleep(4)
             if status_updates_active:
-                await status_msg.edit_text("⏳ Финальные штрихи...")
+                try:
+                    await status_msg.delete()
+                    status_msg = await message.answer("⏳ Финальные штрихи...")
+                except Exception as e:
+                    print(f"Failed to update status 2: {e}")
         except asyncio.CancelledError:
             pass
-        except Exception:
-            # Ignore edit errors if message was already replaced
-            pass
+        except Exception as e:
+            print(f"Status update error: {e}")
 
     # Start typing loop and status updates in background
     typing_task = asyncio.create_task(keep_typing())
