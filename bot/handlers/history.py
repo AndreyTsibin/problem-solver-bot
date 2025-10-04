@@ -57,31 +57,13 @@ async def view_problem_detail(callback: CallbackQuery):
             await callback.answer("Проблема не найдена", show_alert=True)
             return
 
-        # Try to parse as JSON (old format), fallback to plain text (new format)
-        if problem.action_plan:
-            try:
-                plan = json.loads(problem.action_plan)
-                # Old JSON format
-                text = f"📝 Проблема:\n{problem.title}\n\n"
-                if problem.root_cause:
-                    text += f"🎯 Причина:\n{problem.root_cause}\n\n"
-                text += "📋 План:\n"
-                for action in plan.get('immediate', [])[:2]:
-                    text += f"□ {action}\n"
-            except (json.JSONDecodeError, TypeError):
-                # New format: use safe text preparation
-                text = prepare_problem_text(
-                    title=problem.title,
-                    root_cause=problem.root_cause,
-                    action_plan=problem.action_plan,
-                    max_plan_length=300
-                )
-        else:
-            # No action plan
-            text = prepare_problem_text(
-                title=problem.title,
-                root_cause=problem.root_cause
-            )
+        # Always use safe text preparation to strip markdown
+        text = prepare_problem_text(
+            title=problem.title,
+            root_cause=problem.root_cause,
+            action_plan=problem.action_plan,
+            max_plan_length=300
+        )
 
         builder = InlineKeyboardBuilder()
         builder.button(text="🔙 К списку", callback_data="my_problems")
