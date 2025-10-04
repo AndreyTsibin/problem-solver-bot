@@ -118,15 +118,15 @@ async def receive_problem(message: Message, state: FSMContext):
 
 
 async def ask_next_question(message: Message, state: FSMContext):
-    """Generate and send next question"""
+    """Generate and send next question with status message editing"""
     data = await state.get_data()
     user_gender = data.get('user_gender')  # Get gender from state
 
     # Show typing indicator while generating question
     bot = message.bot
 
-    # Send processing message
-    processing_msg = await message.answer(get_random_thinking_message("question"))
+    # Send status message that will be edited
+    status_msg = await message.answer("⏳ Формулирую вопрос...")
 
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
@@ -146,16 +146,13 @@ async def ask_next_question(message: Message, state: FSMContext):
             gender=user_gender
         )
 
-    # Delete processing message
-    await processing_msg.delete()
+    # Edit status message to show the question
+    await status_msg.edit_text(question)
 
     # Add to history
     history = data['conversation_history']
     history.append({"role": "assistant", "content": question})
     await state.update_data(conversation_history=history)
-
-    # Send question without buttons
-    await message.answer(question)
 
 
 @router.message(ProblemSolvingStates.asking_questions)
@@ -181,12 +178,15 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution with manual typing indicator control"""
+    """Generate and show final solution with status message and typing indicator"""
     data = await state.get_data()
     await state.set_state(ProblemSolvingStates.generating_solution)
 
     bot = message.bot
     user_gender = data.get('user_gender')
+
+    # Send status message that will be edited to final solution
+    status_msg = await message.answer("⏳ Анализирую всю информацию и готовлю решение...")
 
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
@@ -252,8 +252,8 @@ async def generate_final_solution(message: Message, state: FSMContext):
         except asyncio.CancelledError:
             pass
 
-        # Send solution immediately after typing stops
-        await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
+        # Edit status message to show final solution
+        await status_msg.edit_text(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
     except Exception as e:
         # Stop typing indicator on any error
@@ -351,8 +351,8 @@ async def handle_discussion_question(message: Message, state: FSMContext):
 
         bot = message.bot
 
-        # Send processing message
-        processing_msg = await message.answer(get_random_thinking_message("discussion"))
+        # Send status message that will be edited
+        status_msg = await message.answer("⏳ Обдумываю ответ...")
 
         # Send initial typing indicator immediately
         await bot.send_chat_action(chat_id=message.chat.id, action="typing")
@@ -372,9 +372,6 @@ async def handle_discussion_question(message: Message, state: FSMContext):
                 gender=user_gender
             )
 
-        # Delete processing message
-        await processing_msg.delete()
-
         conversation_history.append({"role": "assistant", "content": answer})
 
         # Increment counter and deduct from appropriate pool
@@ -392,7 +389,8 @@ async def handle_discussion_question(message: Message, state: FSMContext):
 
         remaining = total_available - questions_used
 
-        await message.answer(f"💡 {answer}\n\n📊 Вопросов осталось: {remaining}/{total_available}")
+        # Edit status message to show the answer
+        await status_msg.edit_text(f"💡 {answer}\n\n📊 Вопросов осталось: {remaining}/{total_available}")
 
         if remaining == 0:
             builder = InlineKeyboardBuilder()
