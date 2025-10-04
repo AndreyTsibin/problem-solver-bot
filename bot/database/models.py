@@ -17,6 +17,7 @@ class User(Base):
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False)
     username: Mapped[Optional[str]] = mapped_column(String(32))
     first_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    gender: Mapped[Optional[str]] = mapped_column(String(10))  # 'male', 'female'
     problems_remaining: Mapped[int] = mapped_column(Integer, default=1)  # Optimized for conversion
     discussion_credits: Mapped[int] = mapped_column(Integer, default=0)
     last_purchased_package: Mapped[Optional[str]] = mapped_column(String(20))  # 'starter', 'medium', 'large'

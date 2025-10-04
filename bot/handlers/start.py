@@ -29,7 +29,7 @@ def _get_solutions_word(count: int) -> str:
 
 
 @router.message(Command("start"))
-async def cmd_start(message: Message):
+async def cmd_start(message: Message, state: FSMContext):
     """Handle /start command with optional referral code"""
     user_id = message.from_user.id
     now = datetime.now()
@@ -70,6 +70,45 @@ async def cmd_start(message: Message):
             username=message.from_user.username,
             first_name=message.from_user.first_name
         )
+
+        # Check if user has gender set
+        if not user.gender:
+            # Store referral code in state for later use
+            if referral_code:
+                await state.update_data(referral_code=referral_code)
+
+            # Ask for gender first
+            from bot.states import OnboardingStates
+            await state.set_state(OnboardingStates.choosing_gender)
+
+            gender_text = f"""👋 Привет, {message.from_user.first_name}!
+
+Я твой коуч по решению проблем.
+
+⚡ <b>Чтобы дать максимально точное решение, мне важно знать твой пол.</b>
+
+<b>Почему это важно?</b>
+Мужчины и женщины по-разному подходят к проблемам:
+• Разный фокус вопросов
+• Разные триггеры и решения
+• Разный стиль анализа
+
+Это напрямую влияет на качество решения!
+
+Выбери свой пол:"""
+
+            builder = InlineKeyboardBuilder()
+            builder.button(text="👨 Я парень", callback_data="gender_male")
+            builder.button(text="👩 Я девушка", callback_data="gender_female")
+            builder.adjust(2)
+
+            await message.answer(
+                text=gender_text,
+                reply_markup=builder.as_markup(),
+                parse_mode="HTML"
+            )
+            logger.info(f"Requesting gender from new user {message.from_user.id}")
+            return
 
         # Process referral if user is new and code is valid
         referral_bonus_message = ""
@@ -379,3 +418,148 @@ async def menu_referrals(message: Message):
     """Handle 'Referrals' menu button - redirect to /referral command"""
     from bot.handlers.referral import handle_referral_command
     await handle_referral_command(message)
+
+
+# Gender selection handlers
+@router.callback_query(F.data == "gender_male")
+async def handle_gender_male(callback: CallbackQuery, state: FSMContext):
+    """Handle male gender selection"""
+    async with AsyncSessionLocal() as session:
+        from bot.database.crud import get_user_by_telegram_id
+        from bot.database.crud_subscriptions import get_user_by_referral_code, create_referral
+
+        user = await get_user_by_telegram_id(session, callback.from_user.id)
+        if user:
+            user.gender = 'male'
+            await session.commit()
+            logger.info(f"User {user.telegram_id} selected gender: male")
+
+            # Process referral if stored in state
+            data = await state.get_data()
+            referral_code = data.get('referral_code')
+            referral_bonus_message = ""
+
+            if referral_code:
+                try:
+                    referrer = await get_user_by_referral_code(session, referral_code)
+                    if referrer and referrer.id != user.id:
+                        # Create referral record and grant rewards
+                        await create_referral(session, referrer.id, user.id)
+                        referral_bonus_message = "\n\n✨ <b>Бонус!</b> Ты получил +1 решение от друга!\n"
+
+                        # Notify referrer
+                        try:
+                            await callback.bot.send_message(
+                                referrer.telegram_id,
+                                "🎉 <b>Твой друг присоединился!</b>\n\n"
+                                "Ты получил +1 бонусное решение за приглашение.",
+                                parse_mode="HTML"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to notify referrer {referrer.telegram_id}: {e}")
+
+                        logger.info(f"Referral processed: {referrer.id} -> {user.id}")
+                except Exception as e:
+                    logger.error(f"Error processing referral: {e}")
+
+    # Clear state
+    await state.clear()
+
+    # Send welcome message
+    welcome_text = f"""👋 Отлично!
+
+Я твой личный коуч по решению проблем. Помогу разобраться в любой ситуации и найти реальное решение.
+
+💬 <b>Что я умею:</b>
+• Задаю правильные вопросы, которые помогают увидеть суть
+• Нахожу корневую причину, а не просто симптомы
+• Даю конкретный план действий с дедлайнами
+
+⚡ <b>Как работаем:</b>
+1. Ты описываешь проблему своими словами
+2. Я задаю 3-5 уточняющих вопросов
+3. Ты получаешь решение с конкретными шагами{referral_bonus_message}
+
+Используй меню внизу для навигации! 👇"""
+
+    await callback.message.edit_text(
+        text=welcome_text,
+        parse_mode="HTML"
+    )
+    await callback.message.answer(
+        "Меню:",
+        reply_markup=get_main_menu_keyboard()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "gender_female")
+async def handle_gender_female(callback: CallbackQuery, state: FSMContext):
+    """Handle female gender selection"""
+    async with AsyncSessionLocal() as session:
+        from bot.database.crud import get_user_by_telegram_id
+        from bot.database.crud_subscriptions import get_user_by_referral_code, create_referral
+
+        user = await get_user_by_telegram_id(session, callback.from_user.id)
+        if user:
+            user.gender = 'female'
+            await session.commit()
+            logger.info(f"User {user.telegram_id} selected gender: female")
+
+            # Process referral if stored in state
+            data = await state.get_data()
+            referral_code = data.get('referral_code')
+            referral_bonus_message = ""
+
+            if referral_code:
+                try:
+                    referrer = await get_user_by_referral_code(session, referral_code)
+                    if referrer and referrer.id != user.id:
+                        # Create referral record and grant rewards
+                        await create_referral(session, referrer.id, user.id)
+                        referral_bonus_message = "\n\n✨ <b>Бонус!</b> Ты получила +1 решение от друга!\n"
+
+                        # Notify referrer
+                        try:
+                            await callback.bot.send_message(
+                                referrer.telegram_id,
+                                "🎉 <b>Твой друг присоединился!</b>\n\n"
+                                "Ты получил +1 бонусное решение за приглашение.",
+                                parse_mode="HTML"
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to notify referrer {referrer.telegram_id}: {e}")
+
+                        logger.info(f"Referral processed: {referrer.id} -> {user.id}")
+                except Exception as e:
+                    logger.error(f"Error processing referral: {e}")
+
+    # Clear state
+    await state.clear()
+
+    # Send welcome message
+    welcome_text = f"""👋 Отлично!
+
+Я твой личный коуч по решению проблем. Помогу разобраться в любой ситуации и найти реальное решение.
+
+💬 <b>Что я умею:</b>
+• Задаю правильные вопросы, которые помогают увидеть суть
+• Нахожу корневую причину, а не просто симптомы
+• Даю конкретный план действий с дедлайнами
+
+⚡ <b>Как работаем:</b>
+1. Ты описываешь проблему своими словами
+2. Я задаю 3-5 уточняющих вопросов
+3. Ты получаешь решение с конкретными шагами{referral_bonus_message}
+
+Используй меню внизу для навигации! 👇"""
+
+    await callback.message.edit_text(
+        text=welcome_text,
+        parse_mode="HTML"
+    )
+    await callback.message.answer(
+        "Меню:",
+        reply_markup=get_main_menu_keyboard()
+    )
+    await callback.answer()

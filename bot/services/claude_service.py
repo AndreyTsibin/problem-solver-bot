@@ -18,9 +18,10 @@ class ClaudeService:
         self,
         problem_description: str,
         conversation_history: List[Dict],
-        step: int
+        step: int,
+        gender: str = None
     ) -> str:
-        """Generate next question with prompt caching"""
+        """Generate next question with prompt caching and gender awareness"""
         context = self.prompt_builder.build_questioning_context(
             problem_description=problem_description,
             conversation_history=conversation_history,
@@ -34,7 +35,7 @@ class ClaudeService:
                 system=[
                     {
                         "type": "text",
-                        "text": self.prompt_builder.build_system_prompt(),
+                        "text": self.prompt_builder.build_system_prompt(gender=gender),
                         "cache_control": {"type": "ephemeral"}
                     }
                 ],
@@ -51,9 +52,10 @@ class ClaudeService:
     async def generate_solution(
         self,
         problem_description: str,
-        conversation_history: List[Dict]
+        conversation_history: List[Dict],
+        gender: str = None
     ) -> str:
-        """Generate final solution with prompt caching"""
+        """Generate final solution with prompt caching and gender awareness"""
         context = self.prompt_builder.build_solution_context(
             problem_description=problem_description,
             conversation_history=conversation_history
@@ -67,7 +69,7 @@ class ClaudeService:
                     system=[
                         {
                             "type": "text",
-                            "text": self.prompt_builder.build_system_prompt(),
+                            "text": self.prompt_builder.build_system_prompt(gender=gender),
                             "cache_control": {"type": "ephemeral"}
                         }
                     ],

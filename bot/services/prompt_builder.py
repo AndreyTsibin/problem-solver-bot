@@ -9,6 +9,55 @@ class PromptBuilder:
         self.system_prompt = self._build_core_prompt()
         print("✅ PromptBuilder initialized with optimized prompt")
 
+    def _build_gender_specific_addon(self, gender: str) -> str:
+        """Build gender-specific addon for system prompt"""
+        if gender == 'male':
+            return """
+# УЧЁТ ПОЛА: МУЖСКОЙ
+
+**ФОКУС В ВОПРОСАХ:**
+- Конкретные метрики: "Сколько раз?", "Когда именно?"
+- Логика и причинно-следственные связи
+- Системные паттерны и закономерности
+- Действия, а не эмоции
+- Краткость без лишней эмпатии
+
+**ИЗБЕГАЙ:**
+- "Как ты себя чувствуешь?"
+- Длинные эмпатичные фразы
+- Фокус на отношениях вместо логики
+
+**РЕШЕНИЕ:**
+- Структурированный план с чёткими шагами
+- Цифры, дедлайны, метрики
+- Минимум эмоциональной поддержки
+- Фокус на контроль и результат
+"""
+        elif gender == 'female':
+            return """
+# УЧЁТ ПОЛА: ЖЕНСКИЙ
+
+**ФОКУС В ВОПРОСАХ:**
+- Контекст отношений: "Как это влияет на близких?"
+- Эмоциональный фон: "Что чувствуешь?"
+- Связи между событиями и людьми
+- Признание эмоций перед решением
+- Детализация контекста и нюансов
+
+**БАЛАНС:**
+- Эмпатия + конкретные действия
+- Признать эмоции, затем дать инструменты
+- Больше контекста в вопросах
+
+**РЕШЕНИЕ:**
+- Учёт эмоционального состояния
+- Как решение повлияет на отношения
+- Баланс логики и эмоций
+- Поддержка + конкретные шаги
+"""
+        else:
+            return ""
+
     def _build_core_prompt(self) -> str:
         """Build the core system prompt for Claude"""
         return """Ты — опытный коуч-практик. Твоя цель — найти КОРЕНЬ проблемы и дать работающий план.
@@ -112,14 +161,21 @@ class PromptBuilder:
 
 Весь текст на русском языке!"""
 
-    def build_system_prompt(self) -> str:
+    def build_system_prompt(self, gender: str = None) -> str:
         """
-        Get the system prompt for Claude
+        Get the system prompt for Claude with gender-specific addon
+
+        Args:
+            gender: User's gender ('male', 'female', or None)
 
         Returns:
-            Complete system prompt
+            Complete system prompt with gender-specific instructions
         """
-        return self.system_prompt
+        base_prompt = self.system_prompt
+        if gender:
+            gender_addon = self._build_gender_specific_addon(gender)
+            return gender_addon + "\n" + base_prompt
+        return base_prompt
 
     def build_questioning_context(
         self,

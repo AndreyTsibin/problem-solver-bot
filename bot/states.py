@@ -2,6 +2,11 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
+class OnboardingStates(StatesGroup):
+    """States for user onboarding flow"""
+    choosing_gender = State()  # Selecting gender during onboarding
+
+
 class ProblemSolvingStates(StatesGroup):
     """States for problem analysis flow"""
     waiting_for_problem = State()  # Waiting for problem description

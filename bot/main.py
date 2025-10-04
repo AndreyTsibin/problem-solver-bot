@@ -7,7 +7,7 @@ from aiogram.enums import ParseMode
 
 from bot.config import BOT_TOKEN
 from bot.database.engine import init_db
-from bot.handlers import start, problem_flow, history, payment, referral, subscription
+from bot.handlers import start, problem_flow, history, payment, referral, subscription, settings
 from bot.middleware.errors import ErrorHandlingMiddleware
 from bot.services.subscription_renewal import start_renewal_scheduler
 
@@ -46,6 +46,7 @@ async def main():
     dp.include_router(payment.router)
     dp.include_router(referral.router)
     dp.include_router(subscription.router)
+    dp.include_router(settings.router)
     logger.info("All routers registered")
 
     # Start subscription renewal scheduler as background task

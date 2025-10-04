@@ -118,6 +118,11 @@ async def ask_next_question(message: Message, state: FSMContext):
     """Generate and send next question"""
     data = await state.get_data()
 
+    # Get user's gender from database
+    async with AsyncSessionLocal() as session:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        user_gender = user.gender if user else None
+
     # Show typing indicator while generating question
     bot = message.bot
 
@@ -138,7 +143,8 @@ async def ask_next_question(message: Message, state: FSMContext):
         question = await claude.generate_question(
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
-            step=data['current_step']
+            step=data['current_step'],
+            gender=user_gender
         )
 
     # Delete processing message
@@ -181,6 +187,11 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     await state.set_state(ProblemSolvingStates.generating_solution)
 
+    # Get user's gender from database
+    async with AsyncSessionLocal() as session:
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        user_gender = user.gender if user else None
+
     # Show typing indicator while generating solution
     bot = message.bot
 
@@ -200,7 +211,8 @@ async def generate_final_solution(message: Message, state: FSMContext):
     ):
         solution_text = await claude.generate_solution(
             problem_description=data['problem_description'],
-            conversation_history=data['conversation_history']
+            conversation_history=data['conversation_history'],
+            gender=user_gender
         )
 
     # Delete processing message
@@ -283,6 +295,7 @@ async def handle_discussion_question(message: Message, state: FSMContext):
     """Handle user's discussion question"""
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
+        user_gender = user.gender if user else None
 
         # Determine limits
         base_limits = {
@@ -333,7 +346,8 @@ async def handle_discussion_question(message: Message, state: FSMContext):
             answer = await claude.generate_question(
                 problem_description=data.get('problem_description', ''),
                 conversation_history=conversation_history,
-                step=questions_used + 1
+                step=questions_used + 1,
+                gender=user_gender
             )
 
         # Delete processing message

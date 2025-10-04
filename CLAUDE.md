@@ -23,6 +23,13 @@ Example:
 
 ## Development Workflow
 
+**CRITICAL: Git Commit Policy**
+- **IMPORTANT:** After EVERY completed task or fix, ALWAYS create a git commit immediately
+- This is mandatory to avoid errors and enable easy rollback if needed
+- Never accumulate multiple changes without committing
+- Commit message format: descriptive, in English, following project style
+- Example: `fix: remove skip button` or `feat: add payment validation`
+
 **Using Context7 MCP for Documentation:**
 - **IMPORTANT:** Before writing code for new features, ALWAYS fetch current documentation via Context7 MCP server
 - Use `mcp__context7__resolve-library-id` to find the library (e.g., "aiogram", "sqlalchemy", "anthropic")
