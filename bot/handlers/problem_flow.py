@@ -214,10 +214,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     bot = message.bot
 
-    # Send initial progress message
-    progress_msg = await message.answer(random.choice(SOLUTION_PROGRESS_STAGES['analyze']))
-
-    # Start solution generation in background
+    # STEP 1: Start Claude API in background
     solution_task = asyncio.create_task(
         claude.generate_solution(
             problem_description=data['problem_description'],
@@ -226,34 +223,57 @@ async def generate_final_solution(message: Message, state: FSMContext):
         )
     )
 
-    # Progress update loop
-    stages = ['analyze', 'solution', 'finalizing']
-    stage_index = 0
+    # STEP 2: Start typing indicator in background
+    typing_active = True
 
-    while not solution_task.done():
-        await asyncio.sleep(2.5)
+    async def keep_typing():
+        """Keep typing indicator active while showing progress"""
+        while typing_active:
+            await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+            await asyncio.sleep(4)  # Refresh every 4 seconds
 
-        if not solution_task.done():
-            # Move to next stage
-            stage_index = (stage_index + 1) % len(stages)
-            current_stage = stages[stage_index]
+    typing_task = asyncio.create_task(keep_typing())
 
-            # Update progress message
+    # STEP 3: Show progress message cycle (full cycle regardless of API speed)
+    all_messages = []
+    for stage in ['analyze', 'solution', 'finalizing']:
+        all_messages.extend(SOLUTION_PROGRESS_STAGES[stage])
+
+    # Show 8-9 progress messages (~7 seconds minimum)
+    num_messages = 9
+    current_msg = None
+
+    for i in range(num_messages):
+        # Delete previous message
+        if current_msg:
             try:
-                await progress_msg.edit_text(
-                    random.choice(SOLUTION_PROGRESS_STAGES[current_stage])
-                )
+                await current_msg.delete()
             except Exception:
-                # Ignore edit errors (message too old, etc.)
                 pass
 
-    # Get solution result
+        # Send next progress message
+        progress_text = all_messages[i % len(all_messages)]
+        current_msg = await message.answer(progress_text)
+
+        # Wait before next update (0.8 sec = ~7.2 sec total)
+        await asyncio.sleep(0.8)
+
+    # Delete last progress message
+    if current_msg:
+        try:
+            await current_msg.delete()
+        except Exception:
+            pass
+
+    # STEP 4: Wait for Claude result (if not ready yet)
     solution_text = await solution_task
 
-    # Delete progress message
+    # Stop typing indicator
+    typing_active = False
+    typing_task.cancel()
     try:
-        await progress_msg.delete()
-    except Exception:
+        await typing_task
+    except asyncio.CancelledError:
         pass
 
     # Save to DB
