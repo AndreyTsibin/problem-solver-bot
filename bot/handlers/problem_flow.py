@@ -223,37 +223,27 @@ async def generate_final_solution(message: Message, state: FSMContext):
     # Start generation in background
     generation_task = asyncio.create_task(generate_solution_bg())
 
-    # Cycle through status messages every 4 seconds
-    status_messages = [
-        "⏳ Анализирую всю информацию и готовлю решение...",
-        "⏳ Еще чуть-чуть, почти готов...",
-        "⏳ Финальные штрихи..."
-    ]
+    # Start with initial message
+    current_msg = await message.answer("⏳ Анализирую информацию.")
+    dots = 1
 
-    current_msg = await message.answer(status_messages[0])
-    message_index = 0
-
-    # Keep showing status messages until solution is ready
+    # Keep updating message with animated dots until solution is ready
     while not solution_ready:
         # Send typing indicator
         await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-        # Wait 4 seconds
-        await asyncio.sleep(4)
+        # Wait 3 seconds
+        await asyncio.sleep(3)
 
-        # If still not ready, update message
+        # If still not ready, update message with more dots
         if not solution_ready:
-            message_index = (message_index + 1) % len(status_messages)
+            dots = (dots % 3) + 1  # Cycle: 1 -> 2 -> 3 -> 1
+            dot_string = "." * dots
             try:
-                # Edit existing message instead of deleting/creating
-                await current_msg.edit_text(status_messages[message_index])
-            except Exception as e:
-                # If edit fails, try delete and create new
-                try:
-                    await current_msg.delete()
-                    current_msg = await message.answer(status_messages[message_index])
-                except Exception:
-                    pass  # Ignore all errors
+                # Edit with new number of dots (always different text = no "not modified" error)
+                await current_msg.edit_text(f"⏳ Анализирую информацию{dot_string}")
+            except Exception:
+                pass  # Ignore errors
 
     # Wait for generation to fully complete
     await generation_task
