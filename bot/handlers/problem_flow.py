@@ -28,30 +28,6 @@ claude = ClaudeService()
 prompt_builder = PromptBuilder()
 
 
-def get_random_thinking_message(context: str) -> str:
-    """Get random thinking message based on context"""
-    messages = {
-        "question": [
-            "Хм, интересно... 🤔",
-            "Дай подумаю...",
-            "Сейчас сформулирую вопрос...",
-            "Минутку...",
-            "Понял, идём дальше..."
-        ],
-        "solution": [
-            "Сейчас всё проанализирую... 🔍",
-            "Минутку, формулирую решение...",
-            "Собираю всё воедино...",
-            "Анализирую информацию..."
-        ],
-        "discussion": [
-            "Хороший вопрос! 🤔",
-            "Дай подумаю...",
-            "Сейчас отвечу...",
-            "Минутку..."
-        ]
-    }
-    return random.choice(messages.get(context, ["Думаю..."]))
 
 
 @router.callback_query(F.data == "new_problem")
@@ -178,85 +154,39 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution with status messages cycling every 4 seconds"""
+    """Generate and show final solution with simple status message"""
     data = await state.get_data()
     await state.set_state(ProblemSolvingStates.generating_solution)
 
     bot = message.bot
     user_gender = data.get('user_gender')
 
-    # Shared state
-    solution_ready = False
-    solution_text = None
-    solution_error = None
+    # Show status message
+    status_msg = await message.answer("⏳ Анализирую всю информацию и готовлю решение...")
 
-    # Start Claude API call in background
-    async def generate_solution_bg():
-        nonlocal solution_ready, solution_text, solution_error
-        try:
-            result = await claude.generate_solution(
-                problem_description=data['problem_description'],
-                conversation_history=data['conversation_history'],
-                gender=user_gender
-            )
+    # Keep typing indicator active
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-            # Save to DB
-            async with AsyncSessionLocal() as session:
-                db_result = await session.execute(
-                    select(Problem).where(Problem.id == data['problem_id'])
-                )
-                problem = db_result.scalar_one_or_none()
+    # Generate solution
+    solution_text = await claude.generate_solution(
+        problem_description=data['problem_description'],
+        conversation_history=data['conversation_history'],
+        gender=user_gender
+    )
 
-                if problem:
-                    problem.root_cause = result[:500]
-                    problem.action_plan = result
-                    problem.status = 'solved'
-                    problem.solved_at = datetime.utcnow()
-                    await session.commit()
+    # Save to DB
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(Problem).where(Problem.id == data['problem_id'])
+        )
+        problem = result.scalar_one_or_none()
 
-            solution_text = result
-            solution_ready = True
-        except Exception as e:
-            solution_error = e
-            solution_ready = True
-
-    # Start generation in background
-    generation_task = asyncio.create_task(generate_solution_bg())
-
-    # Start with initial message
-    current_msg = await message.answer("⏳ Анализирую информацию.")
-    dots = 1
-
-    # Keep updating message with animated dots until solution is ready
-    while not solution_ready:
-        # Send typing indicator
-        await bot.send_chat_action(chat_id=message.chat.id, action="typing")
-
-        # Wait 3 seconds
-        await asyncio.sleep(3)
-
-        # If still not ready, update message with more dots
-        if not solution_ready:
-            dots = (dots % 3) + 1  # Cycle: 1 -> 2 -> 3 -> 1
-            dot_string = "." * dots
-            try:
-                # Edit with new number of dots (always different text = no "not modified" error)
-                await current_msg.edit_text(f"⏳ Анализирую информацию{dot_string}")
-            except Exception:
-                pass  # Ignore errors
-
-    # Wait for generation to fully complete
-    await generation_task
-
-    # Delete status message
-    try:
-        await current_msg.delete()
-    except Exception:
-        pass
-
-    # Show result or error
-    if solution_error:
-        raise solution_error
+        if problem:
+            problem.root_cause = solution_text[:500]
+            problem.action_plan = solution_text
+            problem.status = 'solved'
+            problem.solved_at = datetime.utcnow()
+            await session.commit()
 
     # Prepare discussion option
     await state.update_data(discussion_questions_used=0)
@@ -264,6 +194,12 @@ async def generate_final_solution(message: Message, state: FSMContext):
     builder = InlineKeyboardBuilder()
     builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
     builder.adjust(1)
+
+    # Delete status message and send solution
+    try:
+        await status_msg.delete()
+    except Exception:
+        pass
 
     await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
