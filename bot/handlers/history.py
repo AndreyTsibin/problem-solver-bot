@@ -32,7 +32,7 @@ async def show_problems_list(callback: CallbackQuery):
 
         from bot.keyboards import get_main_menu_keyboard
         await callback.message.answer(
-            "📖 **История решений:**",
+            "📖 История решений:",
             reply_markup=builder.as_markup()
         )
 
@@ -56,21 +56,31 @@ async def view_problem_detail(callback: CallbackQuery):
             await callback.answer("Проблема не найдена", show_alert=True)
             return
 
-        text = f"📝 **Проблема:**\n{problem.title}\n\n"
+        # Build text without markdown to avoid parsing errors
+        text = f"📝 Проблема:\n{problem.title}\n\n"
 
         if problem.root_cause:
-            text += f"🎯 **Причина:**\n{problem.root_cause}\n\n"
+            text += f"🎯 Причина:\n{problem.root_cause}\n\n"
 
         if problem.action_plan:
             # Try to parse as JSON (old format), fallback to plain text (new format)
             try:
                 plan = json.loads(problem.action_plan)
-                text += "📋 **План:**\n"
+                text += "📋 План:\n"
                 for action in plan.get('immediate', [])[:2]:
                     text += f"□ {action}\n"
             except (json.JSONDecodeError, TypeError):
-                # New format: plain text
-                text += f"💡 **Решение:**\n{problem.action_plan[:200]}..."
+                # New format: plain text - strip markdown and truncate safely
+                solution_text = problem.action_plan.replace('**', '').replace('*', '')
+                # Find a safe cutoff point (end of sentence)
+                cutoff = 300
+                if len(solution_text) > cutoff:
+                    # Try to cut at sentence end
+                    last_period = solution_text[:cutoff].rfind('.')
+                    if last_period > 100:
+                        cutoff = last_period + 1
+                    solution_text = solution_text[:cutoff] + "..."
+                text += f"💡 Решение:\n{solution_text}"
 
         builder = InlineKeyboardBuilder()
         builder.button(text="🔙 К списку", callback_data="my_problems")

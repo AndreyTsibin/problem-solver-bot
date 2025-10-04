@@ -300,7 +300,7 @@ async def menu_history(message: Message):
         builder.adjust(1)
 
         await message.answer(
-            "📖 **История решений:**",
+            "📖 История решений:",
             reply_markup=builder.as_markup()
         )
 
