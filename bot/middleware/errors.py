@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject, Update, Message, CallbackQuery
+from aiogram.exceptions import TelegramBadRequest
 from anthropic import (
     APIConnectionError,
     RateLimitError,
@@ -88,6 +89,32 @@ class ErrorHandlingMiddleware(BaseMiddleware):
                 event,
                 "❌ Ошибка AI сервиса. Мы уже работаем над решением."
             )
+
+        except TelegramBadRequest as e:
+            # Telegram API errors (invalid markdown, etc.)
+            error_msg = str(e)
+            if "can't parse entities" in error_msg.lower() or "can't find end" in error_msg.lower():
+                logger.error(
+                    "Telegram parse error (likely markdown issue): %s",
+                    error_msg,
+                    exc_info=True,
+                    extra={"error_type": "telegram_parse"}
+                )
+                await self._send_error_message(
+                    event,
+                    "⚠️ Ошибка форматирования текста. Попробуй ещё раз или обратись в поддержку."
+                )
+            else:
+                logger.error(
+                    "Telegram Bad Request: %s",
+                    error_msg,
+                    exc_info=True,
+                    extra={"error_type": "telegram_bad_request"}
+                )
+                await self._send_error_message(
+                    event,
+                    "❌ Ошибка при отправке сообщения. Попробуй позже."
+                )
 
         except Exception as e:
             # Catch-all for unexpected errors

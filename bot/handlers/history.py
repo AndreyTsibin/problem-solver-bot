@@ -5,6 +5,7 @@ import json
 
 from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_user_by_telegram_id, get_user_problems
+from bot.utils.text import prepare_problem_text
 
 router = Router()
 
@@ -56,31 +57,31 @@ async def view_problem_detail(callback: CallbackQuery):
             await callback.answer("Проблема не найдена", show_alert=True)
             return
 
-        # Build text without markdown to avoid parsing errors
-        text = f"📝 Проблема:\n{problem.title}\n\n"
-
-        if problem.root_cause:
-            text += f"🎯 Причина:\n{problem.root_cause}\n\n"
-
+        # Try to parse as JSON (old format), fallback to plain text (new format)
         if problem.action_plan:
-            # Try to parse as JSON (old format), fallback to plain text (new format)
             try:
                 plan = json.loads(problem.action_plan)
+                # Old JSON format
+                text = f"📝 Проблема:\n{problem.title}\n\n"
+                if problem.root_cause:
+                    text += f"🎯 Причина:\n{problem.root_cause}\n\n"
                 text += "📋 План:\n"
                 for action in plan.get('immediate', [])[:2]:
                     text += f"□ {action}\n"
             except (json.JSONDecodeError, TypeError):
-                # New format: plain text - strip markdown and truncate safely
-                solution_text = problem.action_plan.replace('**', '').replace('*', '')
-                # Find a safe cutoff point (end of sentence)
-                cutoff = 300
-                if len(solution_text) > cutoff:
-                    # Try to cut at sentence end
-                    last_period = solution_text[:cutoff].rfind('.')
-                    if last_period > 100:
-                        cutoff = last_period + 1
-                    solution_text = solution_text[:cutoff] + "..."
-                text += f"💡 Решение:\n{solution_text}"
+                # New format: use safe text preparation
+                text = prepare_problem_text(
+                    title=problem.title,
+                    root_cause=problem.root_cause,
+                    action_plan=problem.action_plan,
+                    max_plan_length=300
+                )
+        else:
+            # No action plan
+            text = prepare_problem_text(
+                title=problem.title,
+                root_cause=problem.root_cause
+            )
 
         builder = InlineKeyboardBuilder()
         builder.button(text="🔙 К списку", callback_data="my_problems")
