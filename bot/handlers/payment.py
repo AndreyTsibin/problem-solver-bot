@@ -76,12 +76,12 @@ async def show_solution_packages(callback: CallbackQuery):
 
     builder = InlineKeyboardBuilder()
     # Subscriptions
-    builder.button(text="🔷 Подписка Стандарт (599₽/мес)", callback_data="buy_subscription_standard")
-    builder.button(text="💎 Подписка Премиум (999₽/мес)", callback_data="buy_subscription_premium")
+    builder.button(text="Стандарт (599₽/мес)", callback_data="buy_subscription_standard")
+    builder.button(text="Премиум (999₽/мес)", callback_data="buy_subscription_premium")
     # One-time packages
-    builder.button(text="🟢 Стартовый (250₽)", callback_data="buy_starter")
-    builder.button(text="🔵 Средний (600₽)", callback_data="buy_medium")
-    builder.button(text="🟣 Большой (1200₽)", callback_data="buy_large")
+    builder.button(text="Стартовый (250₽)", callback_data="buy_starter")
+    builder.button(text="Средний (600₽)", callback_data="buy_medium")
+    builder.button(text="Большой (1200₽)", callback_data="buy_large")
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 

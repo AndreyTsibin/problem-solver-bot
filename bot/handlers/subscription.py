@@ -79,11 +79,11 @@ async def handle_subscription_command(message: Message):
 
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(
-                        text="🟢 Стандарт (599₽)",
+                        text="Стандарт (599₽)",
                         callback_data="subscribe_standard"
                     )],
                     [InlineKeyboardButton(
-                        text="🟣 Премиум (999₽)",
+                        text="Премиум (999₽)",
                         callback_data="subscribe_premium"
                     )],
                     [InlineKeyboardButton(
@@ -285,9 +285,9 @@ async def handle_show_packages(callback: CallbackQuery):
 💡 Используй когда нужно — без автопродления!"""
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🟢 Стартовый (250₽)", callback_data="buy_starter")],
-        [InlineKeyboardButton(text="🔵 Средний (600₽)", callback_data="buy_medium")],
-        [InlineKeyboardButton(text="🟣 Большой (1200₽)", callback_data="buy_large")],
+        [InlineKeyboardButton(text="Стартовый (250₽)", callback_data="buy_starter")],
+        [InlineKeyboardButton(text="Средний (600₽)", callback_data="buy_medium")],
+        [InlineKeyboardButton(text="Большой (1200₽)", callback_data="buy_large")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_subscription")]
     ])
 
