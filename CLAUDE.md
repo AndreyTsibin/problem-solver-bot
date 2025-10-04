@@ -13,7 +13,7 @@ Example:
 
 ## Project Overview
 
-**МозгоБот** — Telegram bot-coach for systematic problem-solving using AI-powered analysis. Claude autonomously determines the best approach for each problem using its knowledge of psychological and analytical techniques.
+**Problem Solver Bot** — Telegram bot-coach for systematic problem-solving using AI-powered analysis. Claude autonomously determines the best approach for each problem using its knowledge of psychological and analytical techniques.
 
 **Tech Stack:**
 - Python 3.11+ with aiogram 3.x (async Telegram bot framework)
