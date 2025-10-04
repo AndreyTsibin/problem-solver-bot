@@ -187,13 +187,16 @@ async def generate_final_solution(message: Message, state: FSMContext):
     bot = message.bot
     user_gender = data.get('user_gender')
 
-    # Show typing indicator during Claude API call
+    # Send initial typing indicator immediately
+    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+
+    # Keep typing indicator active during Claude API call
     async with ChatActionSender(
         bot=bot,
         chat_id=message.chat.id,
         action="typing",
-        initial_sleep=0,
-        interval=4.0
+        initial_sleep=0.5,
+        interval=3.0
     ):
         solution_text = await claude.generate_solution(
             problem_description=data['problem_description'],
