@@ -6,6 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.chat_action import ChatActionSender
 import json
 import random
+import asyncio
 from datetime import datetime
 
 from bot.states import ProblemSolvingStates
@@ -180,7 +181,7 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution with typing indicator until message is sent"""
+    """Generate and show final solution with manual typing indicator control"""
     data = await state.get_data()
     await state.set_state(ProblemSolvingStates.generating_solution)
 
@@ -190,14 +191,31 @@ async def generate_final_solution(message: Message, state: FSMContext):
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-    # Keep typing indicator active during ENTIRE process (including message send)
-    async with ChatActionSender(
-        bot=bot,
-        chat_id=message.chat.id,
-        action="typing",
-        initial_sleep=0.5,
-        interval=3.0
-    ):
+    # Manual typing indicator loop (runs until we stop it)
+    typing_active = True
+
+    async def keep_typing():
+        """Keep sending typing action every 2.5 seconds to ensure it never expires"""
+        try:
+            while typing_active:
+                # Send typing action first, then sleep
+                # This ensures typing is active even at the beginning of each cycle
+                if typing_active:
+                    try:
+                        await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+                    except Exception:
+                        # Continue even if single send fails
+                        pass
+                # Sleep for 2.5 seconds (well before 5-second expiry)
+                await asyncio.sleep(2.5)
+        except asyncio.CancelledError:
+            # Gracefully handle cancellation
+            pass
+
+    # Start typing loop in background
+    typing_task = asyncio.create_task(keep_typing())
+
+    try:
         # Generate solution
         solution_text = await claude.generate_solution(
             problem_description=data['problem_description'],
@@ -226,10 +244,27 @@ async def generate_final_solution(message: Message, state: FSMContext):
         builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
         builder.adjust(1)
 
-        # Send solution WHILE typing is still active
+        # Stop typing indicator BEFORE sending the message
+        typing_active = False
+        typing_task.cancel()
+        try:
+            await typing_task
+        except asyncio.CancelledError:
+            pass
+
+        # Send solution AFTER typing is stopped
         await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
-    # Typing stops automatically after message is sent
+    except Exception as e:
+        # Stop typing indicator on any error
+        typing_active = False
+        typing_task.cancel()
+        try:
+            await typing_task
+        except asyncio.CancelledError:
+            pass
+        # Re-raise the exception
+        raise e
 
 
 # Discussion system handlers
