@@ -212,8 +212,24 @@ async def generate_final_solution(message: Message, state: FSMContext):
             # Gracefully handle cancellation
             pass
 
-    # Start typing loop in background
+    async def update_status_messages():
+        """Update status message every 4 seconds"""
+        try:
+            await asyncio.sleep(4)
+            if typing_active:
+                await status_msg.edit_text("⏳ Еще чуть-чуть, почти готов...")
+            await asyncio.sleep(4)
+            if typing_active:
+                await status_msg.edit_text("⏳ Финальные штрихи...")
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            # Ignore edit errors if message was already replaced
+            pass
+
+    # Start typing loop and status updates in background
     typing_task = asyncio.create_task(keep_typing())
+    status_update_task = asyncio.create_task(update_status_messages())
 
     try:
         # Generate solution
@@ -244,11 +260,16 @@ async def generate_final_solution(message: Message, state: FSMContext):
         builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
         builder.adjust(1)
 
-        # ALL processing is complete (generation + DB save) - now stop typing
+        # ALL processing is complete (generation + DB save) - now stop typing and status updates
         typing_active = False
         typing_task.cancel()
+        status_update_task.cancel()
         try:
             await typing_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await status_update_task
         except asyncio.CancelledError:
             pass
 
@@ -256,11 +277,16 @@ async def generate_final_solution(message: Message, state: FSMContext):
         await status_msg.edit_text(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
     except Exception as e:
-        # Stop typing indicator on any error
+        # Stop typing indicator and status updates on any error
         typing_active = False
         typing_task.cancel()
+        status_update_task.cancel()
         try:
             await typing_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await status_update_task
         except asyncio.CancelledError:
             pass
         # Re-raise the exception
