@@ -149,15 +149,8 @@ async def ask_next_question(message: Message, state: FSMContext):
     history.append({"role": "assistant", "content": question})
     await state.update_data(conversation_history=history)
 
-    # Send with skip button only
-    builder = InlineKeyboardBuilder()
-    builder.button(text="⏭️ Пропустить вопрос", callback_data="skip_question")
-    builder.adjust(1)
-
-    await message.answer(
-        question,
-        reply_markup=builder.as_markup()
-    )
+    # Send question without buttons
+    await message.answer(question)
 
 
 @router.message(ProblemSolvingStates.asking_questions)
@@ -180,13 +173,6 @@ async def receive_answer(message: Message, state: FSMContext):
         await generate_final_solution(message, state)
     else:
         await ask_next_question(message, state)
-
-
-@router.callback_query(F.data == "get_solution")
-async def handle_get_solution(callback: CallbackQuery, state: FSMContext):
-    """User wants solution now"""
-    await generate_final_solution(callback.message, state)
-    await callback.answer()
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
@@ -243,21 +229,6 @@ async def generate_final_solution(message: Message, state: FSMContext):
 
     # Send solution with Markdown formatting and discussion button
     await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
-
-
-@router.callback_query(F.data == "skip_question")
-async def skip_question(callback: CallbackQuery, state: FSMContext):
-    """Skip current question"""
-    data = await state.get_data()
-    step = data['current_step'] + 1
-    await state.update_data(current_step=step)
-
-    if step > 5:
-        await generate_final_solution(callback.message, state)
-    else:
-        await ask_next_question(callback.message, state)
-
-    await callback.answer("Пропущено")
 
 
 # Discussion system handlers
