@@ -26,14 +26,14 @@ async def show_solution_packages(callback: CallbackQuery):
     """Show solution package and subscription options"""
     text = """💳 **Тарифы и пакеты**
 
-**📆 ПОДПИСКИ (ежемесячно):**
+**ПОДПИСКИ (ежемесячно):**
 
-🔷 **Стандарт** — 299 ⭐️ (~599₽/мес)
+**Стандарт** — 299 ⭐️ (~599₽/мес)
 • 15 решений каждый месяц
 • 15 вопросов на обсуждение
 • История за 3 месяца
 
-💎 **Премиум** — 499 ⭐️ (~999₽/мес)
+**Премиум** — 499 ⭐️ (~999₽/мес)
 • 30 решений каждый месяц
 • 25 вопросов на обсуждение
 • Полная история решений
@@ -43,15 +43,15 @@ async def show_solution_packages(callback: CallbackQuery):
 
 **💰 РАЗОВЫЕ ПАКЕТЫ:**
 
-🟢 **Starter** — 125 ⭐️ (~250₽)
+**Starter** — 125 ⭐️ (~250₽)
 • 5 решений
 • 10 вопросов на обсуждение
 
-🔵 **Medium** — 300 ⭐️ (~600₽)
+**Medium** — 300 ⭐️ (~600₽)
 • 15 решений
 • 15 вопросов на обсуждение
 
-🟣 **Large** — 600 ⭐️ (~1200₽)
+**Large** — 600 ⭐️ (~1200₽)
 • 30 решений
 • 25 вопросов на обсуждение
 
@@ -59,12 +59,12 @@ async def show_solution_packages(callback: CallbackQuery):
 
     builder = InlineKeyboardBuilder()
     # Subscriptions
-    builder.button(text="🔷 Подписка Стандарт (299⭐️/мес)", callback_data="buy_subscription_standard")
-    builder.button(text="💎 Подписка Премиум (499⭐️/мес)", callback_data="buy_subscription_premium")
+    builder.button(text="Подписка Стандарт (299⭐️/мес)", callback_data="buy_subscription_standard")
+    builder.button(text="Подписка Премиум (499⭐️/мес)", callback_data="buy_subscription_premium")
     # One-time packages
-    builder.button(text="🟢 Starter (125⭐️)", callback_data="buy_starter")
-    builder.button(text="🔵 Medium (300⭐️)", callback_data="buy_medium")
-    builder.button(text="🟣 Large (600⭐️)", callback_data="buy_large")
+    builder.button(text="Starter (125⭐️)", callback_data="buy_starter")
+    builder.button(text="Medium (300⭐️)", callback_data="buy_medium")
+    builder.button(text="Large (600⭐️)", callback_data="buy_large")
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 

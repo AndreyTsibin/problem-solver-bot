@@ -97,17 +97,17 @@ async def show_discussion_packages(callback: CallbackQuery):
 После каждого решения можно задать дополнительные вопросы.
 Выбери пакет:
 
-🟢 <b>Малый</b> — 100₽
+<b>Малый</b> — 100₽
 • 5 дополнительных вопросов
 
-🔵 <b>Средний</b> — 240₽ (скидка 20₽!)
+<b>Средний</b> — 240₽ (скидка 20₽!)
 • 15 дополнительных вопросов
 
 <i>Вопросы не сгорают — используй когда нужно!</i>"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="🟢 5 вопросов (100₽)", callback_data="buy_discussion_5")
-    builder.button(text="🔵 15 вопросов (240₽)", callback_data="buy_discussion_15")
+    builder.button(text="5 вопросов (100₽)", callback_data="buy_discussion_5")
+    builder.button(text="15 вопросов (240₽)", callback_data="buy_discussion_15")
     builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 
