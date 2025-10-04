@@ -263,33 +263,4 @@ async def handle_back_to_subscription(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.callback_query(F.data == "show_packages")
-async def handle_show_packages(callback: CallbackQuery):
-    """Show one-time packages"""
-    text = """💳 <b>Разовые пакеты</b>
-
-Не хочешь подписку? Купи пакет решений проблем!
-
-<b>СТАРТОВЫЙ</b> — 250₽
-- 5 решений проблем
-- 10 вопросов в обсуждении
-
-<b>СРЕДНИЙ</b> — 600₽
-- 15 решений проблем
-- 15 вопросов в обсуждении
-
-<b>БОЛЬШОЙ</b> — 1200₽
-- 30 решений проблем
-- 25 вопросов в обсуждении
-
-💡 Используй когда нужно — без автопродления!"""
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Стартовый (250₽)", callback_data="buy_starter")],
-        [InlineKeyboardButton(text="Средний (600₽)", callback_data="buy_medium")],
-        [InlineKeyboardButton(text="Большой (1200₽)", callback_data="buy_large")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_subscription")]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
+# show_packages handler moved to payment.py to avoid duplication

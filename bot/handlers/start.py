@@ -307,46 +307,27 @@ async def menu_history(message: Message):
 
 @router.message(F.text == "💳 Премиум")
 async def menu_premium(message: Message):
-    """Handle 'Premium' menu button"""
-    text = """💎 <b>Подписки и пакеты</b>
+    """Handle 'Premium' menu button - redirect to payment selection"""
+    text = """💳 <b>Что тебе удобнее?</b>
 
-<b>📅 Ежемесячные подписки:</b>
+<b>📅 Подписка</b>
+• Автопродление каждый месяц
+• Не нужно каждый раз покупать
+• Выгоднее при регулярном использовании
 
-<b>🟢 Стандарт</b> — 599₽/мес
-• 15 решений каждый месяц
-• 15 вопросов в обсуждении
-• История за 3 месяца
+<b>💰 Разовые пакеты</b>
+• Покупаешь один раз
+• Решения не сгорают
+• Используешь когда удобно
 
-<b>🟣 Премиум</b> — 999₽/мес
-• 30 решений каждый месяц
-• 25 вопросов в обсуждении
-• Полная история
-• Приоритетная обработка
-
-━━━━━━━━━━━━━━━━━━━━
-
-<b>💰 Разовые пакеты:</b>
-
-<b>🟢 Starter</b> — 250₽
-• 5 решений
-• 10 вопросов в обсуждении
-
-<b>🔵 Medium</b> — 600₽
-• 15 решений
-• 15 вопросов в обсуждении
-
-<b>🟣 Large</b> — 1200₽
-• 30 решений
-• 25 вопросов в обсуждении
-
-💡 Решения не сгорают — используй когда удобно!"""
+<b>💬 Вопросы для обсуждения</b>
+• Дополнительные вопросы после решения
+• Для более глубокого анализа"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="📅 Оформить подписку", callback_data="show_subscriptions")
-    builder.button(text="🟢 Starter (250₽)", callback_data="buy_starter")
-    builder.button(text="🔵 Medium (600₽)", callback_data="buy_medium")
-    builder.button(text="🟣 Large (1200₽)", callback_data="buy_large")
-    builder.button(text="💬 Купить вопросы", callback_data="buy_discussions")
+    builder.button(text="📅 Подписки", callback_data="show_subscriptions")
+    builder.button(text="💰 Разовые пакеты", callback_data="show_packages")
+    builder.button(text="💬 Вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 
     await message.answer(text, reply_markup=builder.as_markup(), parse_mode="HTML")
@@ -358,52 +339,7 @@ async def menu_help(message: Message):
     await cmd_help(message)
 
 
-@router.callback_query(F.data == "show_subscriptions")
-async def callback_show_subscriptions(callback: CallbackQuery):
-    """Show subscription options"""
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
-    text = """💎 <b>Ежемесячные подписки</b>
-
-<b>🟢 Стандарт</b> — 599₽/мес
-• 15 решений каждый месяц
-• 15 вопросов в обсуждении
-• История за 3 месяца
-• Автопродление
-
-<b>🟣 Премиум</b> — 999₽/мес
-• 30 решений каждый месяц
-• 25 вопросов в обсуждении
-• Полная история
-• Приоритетная обработка
-• Автопродление
-
-Решения обновляются автоматически каждый месяц!"""
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(
-            text="🟢 Стандарт (599₽)",
-            callback_data="subscribe_standard"
-        )],
-        [InlineKeyboardButton(
-            text="🟣 Премиум (999₽)",
-            callback_data="subscribe_premium"
-        )],
-        [InlineKeyboardButton(
-            text="◀️ Назад",
-            callback_data="back_to_premium"
-        )]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
-
-
-@router.callback_query(F.data == "back_to_premium")
-async def callback_back_to_premium(callback: CallbackQuery):
-    """Go back to premium menu"""
-    await menu_premium(callback.message)
-    await callback.answer()
+# Legacy subscription handlers removed - now handled by payment.py
 
 
 @router.message(F.text == "💎 Подписки")
