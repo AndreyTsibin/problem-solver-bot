@@ -15,9 +15,9 @@ logger = structlog.get_logger()
 
 # Pricing in Russian Rubles
 PACKAGES = {
-    'starter': {'solutions': 5, 'price': 250, 'discussion_limit': 10, 'name': 'Starter'},
-    'medium': {'solutions': 15, 'price': 600, 'discussion_limit': 15, 'name': 'Medium'},
-    'large': {'solutions': 30, 'price': 1200, 'discussion_limit': 25, 'name': 'Large'},
+    'starter': {'solutions': 5, 'price': 250, 'discussion_limit': 10, 'name': 'Стартовый'},
+    'medium': {'solutions': 15, 'price': 600, 'discussion_limit': 15, 'name': 'Средний'},
+    'large': {'solutions': 30, 'price': 1200, 'discussion_limit': 25, 'name': 'Большой'},
     'discussion_5': {'discussions': 5, 'price': 100, 'name': '5 вопросов'},
     'discussion_15': {'discussions': 15, 'price': 240, 'name': '15 вопросов'},
     # Subscription plans (monthly recurring)
@@ -60,16 +60,16 @@ async def show_solution_packages(callback: CallbackQuery):
 
 <b>💰 РАЗОВЫЕ ПАКЕТЫ:</b>
 
-🟢 <b>Starter</b> — 250₽
-• 5 решений
+🟢 <b>Стартовый</b> — 250₽
+• 5 решений проблем
 • 10 вопросов на обсуждение
 
-🔵 <b>Medium</b> — 600₽
-• 15 решений
+🔵 <b>Средний</b> — 600₽
+• 15 решений проблем
 • 15 вопросов на обсуждение
 
-🟣 <b>Large</b> — 1200₽
-• 30 решений
+🟣 <b>Большой</b> — 1200₽
+• 30 решений проблем
 • 25 вопросов на обсуждение
 
 <i>Решения не сгорают — используй когда удобно!</i>"""
@@ -79,9 +79,9 @@ async def show_solution_packages(callback: CallbackQuery):
     builder.button(text="🔷 Подписка Стандарт (599₽/мес)", callback_data="buy_subscription_standard")
     builder.button(text="💎 Подписка Премиум (999₽/мес)", callback_data="buy_subscription_premium")
     # One-time packages
-    builder.button(text="🟢 Starter (250₽)", callback_data="buy_starter")
-    builder.button(text="🔵 Medium (600₽)", callback_data="buy_medium")
-    builder.button(text="🟣 Large (1200₽)", callback_data="buy_large")
+    builder.button(text="🟢 Стартовый (250₽)", callback_data="buy_starter")
+    builder.button(text="🔵 Средний (600₽)", callback_data="buy_medium")
+    builder.button(text="🟣 Большой (1200₽)", callback_data="buy_large")
     builder.button(text="💬 Купить вопросы для обсуждения", callback_data="buy_discussions")
     builder.adjust(1)
 
@@ -122,7 +122,7 @@ async def buy_starter_package(callback: CallbackQuery):
     await initiate_yookassa_payment(
         callback,
         package_type='starter',
-        description="Пакет Starter: 5 решений + 10 вопросов на обсуждение"
+        description="Пакет Стартовый: 5 решений проблем + 10 вопросов на обсуждение"
     )
 
 
@@ -132,7 +132,7 @@ async def buy_medium_package(callback: CallbackQuery):
     await initiate_yookassa_payment(
         callback,
         package_type='medium',
-        description="Пакет Medium: 15 решений + 15 вопросов на обсуждение"
+        description="Пакет Средний: 15 решений проблем + 15 вопросов на обсуждение"
     )
 
 
@@ -142,7 +142,7 @@ async def buy_large_package(callback: CallbackQuery):
     await initiate_yookassa_payment(
         callback,
         package_type='large',
-        description="Пакет Large: 30 решений + 25 вопросов на обсуждение"
+        description="Пакет Большой: 30 решений проблем + 25 вопросов на обсуждение"
     )
 
 

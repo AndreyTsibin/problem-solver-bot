@@ -37,7 +37,7 @@ async def main():
 
     # Register error handling middleware
     dp.update.middleware(ErrorHandlingMiddleware())
-    logger.info("Error handling middleware registered")
+    logger.info("Error handling middleware initialized")
 
     # Register routers
     dp.include_router(start.router)
