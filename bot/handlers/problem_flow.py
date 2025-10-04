@@ -6,7 +6,6 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.chat_action import ChatActionSender
 import json
 import random
-import asyncio
 from datetime import datetime
 
 from bot.states import ProblemSolvingStates
@@ -26,25 +25,6 @@ from sqlalchemy import select
 router = Router()
 claude = ClaudeService()
 prompt_builder = PromptBuilder()
-
-# Progress messages for solution generation
-SOLUTION_PROGRESS_STAGES = {
-    'analyze': [
-        "🔍 Анализирую суть проблемы...",
-        "🧠 Изучаю все детали...",
-        "🎯 Выявляю корневую причину..."
-    ],
-    'solution': [
-        "💡 Ищу лучшее решение...",
-        "🚀 Формирую план действий...",
-        "🔧 Адаптирую под твою ситуацию..."
-    ],
-    'finalizing': [
-        "✨ Шлифую последние детали...",
-        "🎁 Упаковываю решение...",
-        "🏁 Почти готово..."
-    ]
-}
 
 
 def get_random_thinking_message(context: str) -> str:
@@ -200,75 +180,26 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution with progress messages"""
+    """Generate and show final solution (simplified - typing indicator only)"""
     data = await state.get_data()
-
     await state.set_state(ProblemSolvingStates.generating_solution)
 
     bot = message.bot
-    user_gender = data.get('user_gender')  # Get gender from state
+    user_gender = data.get('user_gender')
 
-    # STEP 1: Start Claude API immediately (no DB request needed)
-    solution_task = asyncio.create_task(
-        claude.generate_solution(
+    # Show typing indicator during Claude API call
+    async with ChatActionSender(
+        bot=bot,
+        chat_id=message.chat.id,
+        action="typing",
+        initial_sleep=0,
+        interval=4.0
+    ):
+        solution_text = await claude.generate_solution(
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
             gender=user_gender
         )
-    )
-
-    # STEP 2: Start typing indicator in background
-    typing_active = True
-
-    async def keep_typing():
-        """Keep typing indicator active while showing progress"""
-        while typing_active:
-            await bot.send_chat_action(chat_id=message.chat.id, action="typing")
-            await asyncio.sleep(4)  # Refresh every 4 seconds
-
-    typing_task = asyncio.create_task(keep_typing())
-
-    # STEP 3: Show progress message cycle (full cycle regardless of API speed)
-    all_messages = []
-    for stage in ['analyze', 'solution', 'finalizing']:
-        all_messages.extend(SOLUTION_PROGRESS_STAGES[stage])
-
-    # Show 8-9 progress messages (~7 seconds minimum)
-    num_messages = 9
-    current_msg = None
-
-    for i in range(num_messages):
-        # Delete previous message
-        if current_msg:
-            try:
-                await current_msg.delete()
-            except Exception:
-                pass
-
-        # Send next progress message
-        progress_text = all_messages[i % len(all_messages)]
-        current_msg = await message.answer(progress_text)
-
-        # Wait before next update (0.8 sec = ~7.2 sec total)
-        await asyncio.sleep(0.8)
-
-    # Delete last progress message
-    if current_msg:
-        try:
-            await current_msg.delete()
-        except Exception:
-            pass
-
-    # STEP 4: Wait for Claude result (if not ready yet)
-    solution_text = await solution_task
-
-    # Stop typing indicator
-    typing_active = False
-    typing_task.cancel()
-    try:
-        await typing_task
-    except asyncio.CancelledError:
-        pass
 
     # Save to DB
     async with AsyncSessionLocal() as session:
@@ -278,8 +209,8 @@ async def generate_final_solution(message: Message, state: FSMContext):
         problem = result.scalar_one_or_none()
 
         if problem:
-            problem.root_cause = solution_text[:500]  # Store first 500 chars
-            problem.action_plan = solution_text  # Store full solution
+            problem.root_cause = solution_text[:500]
+            problem.action_plan = solution_text
             problem.status = 'solved'
             problem.solved_at = datetime.utcnow()
             await session.commit()
