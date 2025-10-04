@@ -6,6 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.chat_action import ChatActionSender
 import json
 import random
+import asyncio
 from datetime import datetime
 
 from bot.states import ProblemSolvingStates
@@ -25,6 +26,25 @@ from sqlalchemy import select
 router = Router()
 claude = ClaudeService()
 prompt_builder = PromptBuilder()
+
+# Progress messages for solution generation
+SOLUTION_PROGRESS_STAGES = {
+    'analyze': [
+        "🔍 Анализирую суть проблемы...",
+        "🧠 Изучаю все детали...",
+        "🎯 Выявляю корневую причину..."
+    ],
+    'solution': [
+        "💡 Ищу лучшее решение...",
+        "🚀 Формирую план действий...",
+        "🔧 Адаптирую под твою ситуацию..."
+    ],
+    'finalizing': [
+        "✨ Шлифую последние детали...",
+        "🎁 Упаковываю решение...",
+        "🏁 Почти готово..."
+    ]
+}
 
 
 def get_random_thinking_message(context: str) -> str:
@@ -182,7 +202,7 @@ async def receive_answer(message: Message, state: FSMContext):
 
 
 async def generate_final_solution(message: Message, state: FSMContext):
-    """Generate and show final solution"""
+    """Generate and show final solution with progress messages"""
     data = await state.get_data()
 
     await state.set_state(ProblemSolvingStates.generating_solution)
@@ -192,31 +212,49 @@ async def generate_final_solution(message: Message, state: FSMContext):
         user = await get_user_by_telegram_id(session, message.from_user.id)
         user_gender = user.gender if user else None
 
-    # Show typing indicator while generating solution
     bot = message.bot
 
-    # Send processing message
-    processing_msg = await message.answer(get_random_thinking_message("solution"))
+    # Send initial progress message
+    progress_msg = await message.answer(random.choice(SOLUTION_PROGRESS_STAGES['analyze']))
 
-    # Send initial typing indicator immediately
-    await bot.send_chat_action(chat_id=message.chat.id, action="typing")
-
-    # Keep typing indicator active during Claude request
-    async with ChatActionSender(
-        bot=bot,
-        chat_id=message.chat.id,
-        action="typing",
-        initial_sleep=0.5,
-        interval=3.0
-    ):
-        solution_text = await claude.generate_solution(
+    # Start solution generation in background
+    solution_task = asyncio.create_task(
+        claude.generate_solution(
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
             gender=user_gender
         )
+    )
 
-    # Delete processing message
-    await processing_msg.delete()
+    # Progress update loop
+    stages = ['analyze', 'solution', 'finalizing']
+    stage_index = 0
+
+    while not solution_task.done():
+        await asyncio.sleep(2.5)
+
+        if not solution_task.done():
+            # Move to next stage
+            stage_index = (stage_index + 1) % len(stages)
+            current_stage = stages[stage_index]
+
+            # Update progress message
+            try:
+                await progress_msg.edit_text(
+                    random.choice(SOLUTION_PROGRESS_STAGES[current_stage])
+                )
+            except Exception:
+                # Ignore edit errors (message too old, etc.)
+                pass
+
+    # Get solution result
+    solution_text = await solution_task
+
+    # Delete progress message
+    try:
+        await progress_msg.delete()
+    except Exception:
+        pass
 
     # Save to DB
     async with AsyncSessionLocal() as session:
