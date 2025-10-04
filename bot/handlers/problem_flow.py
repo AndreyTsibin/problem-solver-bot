@@ -190,7 +190,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     # Send initial typing indicator immediately
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
 
-    # Keep typing indicator active during Claude API call
+    # Keep typing indicator active during entire process (Claude + DB save)
     async with ChatActionSender(
         bot=bot,
         chat_id=message.chat.id,
@@ -198,34 +198,35 @@ async def generate_final_solution(message: Message, state: FSMContext):
         initial_sleep=0.5,
         interval=3.0
     ):
+        # Generate solution
         solution_text = await claude.generate_solution(
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
             gender=user_gender
         )
 
-    # Save to DB
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Problem).where(Problem.id == data['problem_id'])
-        )
-        problem = result.scalar_one_or_none()
+        # Save to DB
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(Problem).where(Problem.id == data['problem_id'])
+            )
+            problem = result.scalar_one_or_none()
 
-        if problem:
-            problem.root_cause = solution_text[:500]
-            problem.action_plan = solution_text
-            problem.status = 'solved'
-            problem.solved_at = datetime.utcnow()
-            await session.commit()
+            if problem:
+                problem.root_cause = solution_text[:500]
+                problem.action_plan = solution_text
+                problem.status = 'solved'
+                problem.solved_at = datetime.utcnow()
+                await session.commit()
 
-    # Offer discussion option
-    await state.update_data(discussion_questions_used=0)
+        # Prepare discussion option
+        await state.update_data(discussion_questions_used=0)
 
-    builder = InlineKeyboardBuilder()
-    builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
-    builder.adjust(1)
+        builder = InlineKeyboardBuilder()
+        builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
+        builder.adjust(1)
 
-    # Send solution with Markdown formatting and discussion button
+    # Send solution (typing stops automatically before this)
     await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
 
