@@ -94,3 +94,38 @@ class ClaudeService:
 💬 P.S.
 Извини за неудобства!"""
                 time.sleep(2 ** attempt)
+
+    async def generate_discussion_answer(
+        self,
+        problem_description: str,
+        conversation_history: List[Dict],
+        user_question: str,
+        gender: str = None
+    ) -> str:
+        """Generate answer for discussion mode with FULL context"""
+        context = self.prompt_builder.build_discussion_context(
+            problem_description=problem_description,
+            conversation_history=conversation_history,
+            user_question=user_question
+        )
+
+        try:
+            message = self.client.messages.create(
+                model=self.model,
+                max_tokens=500,  # Discussion answers are shorter
+                system=[
+                    {
+                        "type": "text",
+                        "text": self.prompt_builder.build_system_prompt(gender=gender),
+                        "cache_control": {"type": "ephemeral"}
+                    }
+                ],
+                messages=[{"role": "user", "content": context}]
+            )
+
+            answer = message.content[0].text.strip()
+            return answer
+
+        except Exception as e:
+            print(f"❌ Error generating discussion answer: {e}")
+            return "Извини, возникла техническая ошибка. Попробуй переформулировать вопрос."

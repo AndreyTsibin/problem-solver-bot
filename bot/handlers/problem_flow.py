@@ -347,7 +347,7 @@ async def handle_discussion_question(message: Message, state: FSMContext):
 
         # Generate answer using Claude with typing indicator
         conversation_history = data.get('conversation_history', [])
-        conversation_history.append({"role": "user", "content": message.text})
+        user_question = message.text
 
         bot = message.bot
 
@@ -365,13 +365,15 @@ async def handle_discussion_question(message: Message, state: FSMContext):
             initial_sleep=0.5,
             interval=3.0
         ):
-            answer = await claude.generate_question(
+            answer = await claude.generate_discussion_answer(
                 problem_description=data.get('problem_description', ''),
                 conversation_history=conversation_history,
-                step=questions_used + 1,
+                user_question=user_question,
                 gender=user_gender
             )
 
+        # Add question and answer to history
+        conversation_history.append({"role": "user", "content": user_question})
         conversation_history.append({"role": "assistant", "content": answer})
 
         # Increment counter and deduct from appropriate pool

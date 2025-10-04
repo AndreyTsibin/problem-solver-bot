@@ -217,3 +217,25 @@ class PromptBuilder:
 {conversation_text}
 
 Создай решение по структуре из системного промпта. Макс 1800 символов."""
+
+    def build_discussion_context(
+        self,
+        problem_description: str,
+        conversation_history: List[Dict],
+        user_question: str
+    ) -> str:
+        """Build context for discussion mode - includes FULL history with solution"""
+        # Include ALL conversation (questions, answers, and solution)
+        conversation_text = "\n".join([
+            f"{'Коуч' if msg['role'] == 'assistant' else 'Пользователь'}: {msg['content']}"
+            for msg in conversation_history
+        ])
+
+        return f"""Проблема пользователя: {problem_description}
+
+Полная история разговора (включая решение):
+{conversation_text}
+
+Новый вопрос пользователя: {user_question}
+
+Ответь на вопрос пользователя, используя всю предыдущую информацию о его проблеме и предложенном решении. Будь кратким и практичным (макс 150 слов)."""
