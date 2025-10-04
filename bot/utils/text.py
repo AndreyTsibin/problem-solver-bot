@@ -118,7 +118,10 @@ def prepare_problem_text(
     text = f"📝 Проблема:\n{strip_markdown(title)}\n\n"
 
     if root_cause:
-        text += f"🎯 Причина:\n{strip_markdown(root_cause)}\n\n"
+        # Strip markdown and truncate root_cause too (can be long)
+        clean_cause = strip_markdown(root_cause)
+        truncated_cause = truncate_at_sentence(clean_cause, 200, 50)
+        text += f"🎯 Причина:\n{truncated_cause}\n\n"
 
     if action_plan:
         # Strip markdown and truncate safely
