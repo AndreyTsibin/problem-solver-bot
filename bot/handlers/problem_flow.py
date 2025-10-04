@@ -214,13 +214,13 @@ async def generate_final_solution(message: Message, state: FSMContext):
             pass
 
     async def update_status_messages():
-        """Update status message every 4 seconds by deleting and sending new"""
+        """Update status message every 2 seconds by deleting and sending new"""
         nonlocal status_msg
         print("DEBUG: Status update task started")
         try:
-            print("DEBUG: Sleeping 4 seconds...")
-            await asyncio.sleep(4)
-            print(f"DEBUG: After 4s sleep, status_updates_active={status_updates_active}")
+            print("DEBUG: Sleeping 2 seconds...")
+            await asyncio.sleep(2)
+            print(f"DEBUG: After 2s sleep, status_updates_active={status_updates_active}")
             if status_updates_active:
                 try:
                     print("DEBUG: Deleting first message...")
@@ -233,9 +233,9 @@ async def generate_final_solution(message: Message, state: FSMContext):
             else:
                 print("DEBUG: status_updates_active is False, skipping first update")
 
-            print("DEBUG: Sleeping another 4 seconds...")
-            await asyncio.sleep(4)
-            print(f"DEBUG: After 8s sleep, status_updates_active={status_updates_active}")
+            print("DEBUG: Sleeping another 2 seconds...")
+            await asyncio.sleep(2)
+            print(f"DEBUG: After 4s sleep, status_updates_active={status_updates_active}")
             if status_updates_active:
                 try:
                     print("DEBUG: Deleting second message...")
@@ -256,6 +256,10 @@ async def generate_final_solution(message: Message, state: FSMContext):
     typing_task = asyncio.create_task(keep_typing())
     status_update_task = asyncio.create_task(update_status_messages())
     print("DEBUG: Both tasks started")
+
+    # Give tasks a chance to start before Claude API call
+    await asyncio.sleep(0.01)
+    print("DEBUG: Starting Claude API call...")
 
     try:
 
