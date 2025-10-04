@@ -62,7 +62,7 @@ async def view_problem_detail(callback: CallbackQuery):
             title=problem.title,
             root_cause=problem.root_cause,
             action_plan=problem.action_plan,
-            max_plan_length=300
+            max_plan_length=1500
         )
 
         builder = InlineKeyboardBuilder()
