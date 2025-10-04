@@ -244,7 +244,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
         builder.button(text="💬 Продолжить обсуждение", callback_data="start_discussion")
         builder.adjust(1)
 
-        # Stop typing indicator BEFORE sending the message
+        # ALL processing is complete (generation + DB save) - now stop typing
         typing_active = False
         typing_task.cancel()
         try:
@@ -252,7 +252,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
         except asyncio.CancelledError:
             pass
 
-        # Send solution AFTER typing is stopped
+        # Send solution immediately after typing stops
         await message.answer(solution_text, parse_mode="Markdown", reply_markup=builder.as_markup())
 
     except Exception as e:
