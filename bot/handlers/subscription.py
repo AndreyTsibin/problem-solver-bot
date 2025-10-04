@@ -80,11 +80,11 @@ async def handle_subscription_command(message: Message):
                 keyboard = InlineKeyboardMarkup(inline_keyboard=[
                     [InlineKeyboardButton(
                         text="🔸 Стандарт (599₽)",
-                        callback_data="subscribe_standard"
+                        callback_data="select_package_subscription_standard"
                     )],
                     [InlineKeyboardButton(
                         text="💎 Премиум (999₽)",
-                        callback_data="subscribe_premium"
+                        callback_data="select_package_subscription_premium"
                     )],
                     [InlineKeyboardButton(
                         text="💸 Разовые пакеты",
