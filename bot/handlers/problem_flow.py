@@ -106,28 +106,30 @@ async def receive_problem(message: Message, state: FSMContext):
     """Start problem analysis (simplified - no pre-analysis)"""
     problem_text = message.text
 
-    # Save to state (no methodology analysis needed)
-    await state.update_data(
-        problem_description=problem_text,
-        conversation_history=[],
-        current_step=1
-    )
-
-    # Create problem in DB
+    # Create problem in DB and get user gender
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
+        user_gender = user.gender if user else None
 
         problem = await create_problem(
             session, user.id, problem_text,
             problem_type=None,  # Claude will determine internally
             methodology=None    # No fixed methodology
         )
-        await state.update_data(problem_id=problem.id)
 
         # Decrement problem credits
         user.problems_remaining -= 1
         remaining = user.problems_remaining
         await session.commit()
+
+    # Save to state (including gender for all future requests)
+    await state.update_data(
+        problem_description=problem_text,
+        conversation_history=[],
+        current_step=1,
+        problem_id=problem.id,
+        user_gender=user_gender  # Save gender once at the beginning
+    )
 
     # Ask first question immediately
     await state.set_state(ProblemSolvingStates.asking_questions)
@@ -137,11 +139,7 @@ async def receive_problem(message: Message, state: FSMContext):
 async def ask_next_question(message: Message, state: FSMContext):
     """Generate and send next question"""
     data = await state.get_data()
-
-    # Get user's gender from database
-    async with AsyncSessionLocal() as session:
-        user = await get_user_by_telegram_id(session, message.from_user.id)
-        user_gender = user.gender if user else None
+    user_gender = data.get('user_gender')  # Get gender from state
 
     # Show typing indicator while generating question
     bot = message.bot
@@ -208,22 +206,16 @@ async def generate_final_solution(message: Message, state: FSMContext):
     await state.set_state(ProblemSolvingStates.generating_solution)
 
     bot = message.bot
+    user_gender = data.get('user_gender')  # Get gender from state
 
-    # STEP 1: Get user gender and start Claude API immediately
-    async def generate_with_gender():
-        """Get gender and call Claude API"""
-        async with AsyncSessionLocal() as session:
-            user = await get_user_by_telegram_id(session, message.from_user.id)
-            user_gender = user.gender if user else None
-
-        return await claude.generate_solution(
+    # STEP 1: Start Claude API immediately (no DB request needed)
+    solution_task = asyncio.create_task(
+        claude.generate_solution(
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
             gender=user_gender
         )
-
-    # Start solution generation in background immediately
-    solution_task = asyncio.create_task(generate_with_gender())
+    )
 
     # STEP 2: Start typing indicator in background
     typing_active = True
@@ -352,9 +344,11 @@ async def start_discussion(callback: CallbackQuery, state: FSMContext):
 @router.message(ProblemSolvingStates.discussing_solution)
 async def handle_discussion_question(message: Message, state: FSMContext):
     """Handle user's discussion question"""
+    data = await state.get_data()
+    user_gender = data.get('user_gender')  # Get gender from state (saved at problem start)
+
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
-        user_gender = user.gender if user else None
 
         # Determine limits
         base_limits = {
@@ -364,7 +358,6 @@ async def handle_discussion_question(message: Message, state: FSMContext):
         }
         base_limit = base_limits.get(user.last_purchased_package, FREE_DISCUSSION_QUESTIONS)
 
-        data = await state.get_data()
         questions_used = data.get('discussion_questions_used', 0)
         total_available = base_limit + user.discussion_credits
         remaining = total_available - questions_used
