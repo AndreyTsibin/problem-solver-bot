@@ -21,6 +21,7 @@ def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
 
     # Create markup with persistent display
     return builder.as_markup(
-        resize_keyboard=True,  # Auto-size buttons
-        is_persistent=True     # Always visible
+        resize_keyboard=True,        # Auto-size buttons
+        is_persistent=True,          # Always visible
+        input_field_placeholder=""   # Prevent auto-opening keyboard on mobile
     )
