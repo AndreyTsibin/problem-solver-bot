@@ -5,23 +5,19 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
 def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
     """
-    Create persistent main menu keyboard with primary bot functions.
+    Create persistent main menu keyboard with simplified 2-button layout.
 
     Returns:
         ReplyKeyboardMarkup with buttons for main actions
     """
     builder = ReplyKeyboardBuilder()
 
-    # Row 1: Main actions
+    # Simplified menu: only 2 buttons
     builder.button(text="🚀 Решить проблему")
-    builder.button(text="📖 История")
+    builder.button(text="👤 Профиль")
 
-    # Row 2: Subscriptions and Referrals
-    builder.button(text="💎 Подписки")
-    builder.button(text="🎁 Рефералы")
-
-    # Adjust layout: 2 buttons per row for all rows
-    builder.adjust(2, 2)
+    # Adjust layout: 2 buttons in one row
+    builder.adjust(2)
 
     # Create markup with persistent display
     return builder.as_markup(

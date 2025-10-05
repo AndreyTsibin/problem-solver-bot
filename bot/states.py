@@ -5,6 +5,9 @@ from aiogram.fsm.state import State, StatesGroup
 class OnboardingStates(StatesGroup):
     """States for user onboarding flow"""
     choosing_gender = State()  # Selecting gender during onboarding
+    entering_birth_date = State()  # Entering date of birth (DD.MM.YYYY)
+    entering_occupation = State()  # Entering occupation/job
+    choosing_work_format = State()  # Choosing work format (remote/office/hybrid/student)
 
 
 class ProblemSolvingStates(StatesGroup):

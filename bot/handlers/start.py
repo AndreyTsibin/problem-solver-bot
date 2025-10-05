@@ -6,9 +6,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_or_create_user
 from bot.keyboards import get_main_menu_keyboard
+from bot.states import OnboardingStates, ProblemSolvingStates
 import logging
 import asyncio
 from datetime import datetime, timedelta
+from typing import Tuple, Union
 
 router = Router()
 logger = logging.getLogger(__name__)
@@ -16,6 +18,37 @@ logger = logging.getLogger(__name__)
 # Track last /start call per user to prevent duplicates
 _last_start_calls = {}
 _THROTTLE_SECONDS = 2
+
+
+def validate_birth_date(text: str) -> Tuple[bool, Union[datetime, str]]:
+    """Validate birth date format and value"""
+    try:
+        # Parse DD.MM.YYYY
+        birth_date = datetime.strptime(text.strip(), "%d.%m.%Y")
+
+        # Check not in future
+        if birth_date > datetime.now():
+            return False, "Дата не может быть в будущем 🤔"
+
+        # Check age range (14-100 years)
+        age = calculate_age(birth_date)
+        if age < 14:
+            return False, "Тебе должно быть минимум 14 лет для использования бота"
+        if age > 100:
+            return False, "Пожалуйста, укажи корректную дату рождения"
+
+        return True, birth_date
+
+    except ValueError:
+        return False, "Неверный формат ⚠️\n\nИспользуй формат ДД.ММ.ГГГГ\nНапример: 15.03.1995"
+
+
+def calculate_age(birth_date: datetime) -> int:
+    """Calculate age from birth date"""
+    today = datetime.today()
+    return today.year - birth_date.year - (
+        (today.month, today.day) < (birth_date.month, birth_date.day)
+    )
 
 
 def _get_solutions_word(count: int) -> str:
@@ -266,8 +299,13 @@ async def menu_new_problem(message: Message, state: FSMContext):
             return
 
     await message.answer(
-        "🎯 Опиши свою проблему своими словами.\n\n"
-        "Расскажи что происходит — коротко или подробно, как тебе удобно."
+        "🎯 Опиши свою проблему максимально подробно:\n\n"
+        "📝 Укажи:\n"
+        "• Что именно происходит?\n"
+        "• Как долго это длится?\n"
+        "• Что уже пробовал(а)?\n\n"
+        "💡 Чем подробнее опишешь — тем точнее решение!\n"
+        "(минимум 50 слов)"
     )
     await state.set_state(ProblemSolvingStates.waiting_for_problem)
 
@@ -360,9 +398,10 @@ async def menu_referrals(message: Message):
 @router.callback_query(F.data == "gender_male")
 async def handle_gender_male(callback: CallbackQuery, state: FSMContext):
     """Handle male gender selection"""
+    from bot.states import OnboardingStates
+
     async with AsyncSessionLocal() as session:
         from bot.database.crud import get_user_by_telegram_id
-        from bot.database.crud_subscriptions import get_user_by_referral_code, create_referral
 
         user = await get_user_by_telegram_id(session, callback.from_user.id)
         if user:
@@ -370,61 +409,14 @@ async def handle_gender_male(callback: CallbackQuery, state: FSMContext):
             await session.commit()
             logger.info(f"User {user.telegram_id} selected gender: male")
 
-            # Process referral if stored in state
-            data = await state.get_data()
-            referral_code = data.get('referral_code')
-            referral_bonus_message = ""
-
-            if referral_code:
-                try:
-                    referrer = await get_user_by_referral_code(session, referral_code)
-                    if referrer and referrer.id != user.id:
-                        # Create referral record and grant rewards
-                        await create_referral(session, referrer.id, user.id)
-                        referral_bonus_message = "\n\n✨ <b>Бонус!</b> Ты получил +1 решение от друга!\n"
-
-                        # Notify referrer
-                        try:
-                            await callback.bot.send_message(
-                                referrer.telegram_id,
-                                "🎉 <b>Твой друг присоединился!</b>\n\n"
-                                "Ты получил +1 бонусное решение за приглашение.",
-                                parse_mode="HTML"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to notify referrer {referrer.telegram_id}: {e}")
-
-                        logger.info(f"Referral processed: {referrer.id} -> {user.id}")
-                except Exception as e:
-                    logger.error(f"Error processing referral: {e}")
-
-    # Clear state
-    await state.clear()
-
-    # Send welcome message
-    welcome_text = f"""👋 Отлично!
-
-Я твой личный коуч по решению проблем. Помогу разобраться в любой ситуации и найти реальное решение.
-
-💬 <b>Что я умею:</b>
-• Задаю правильные вопросы, которые помогают увидеть суть
-• Нахожу корневую причину, а не просто симптомы
-• Даю конкретный план действий с дедлайнами
-
-⚡ <b>Как работаем:</b>
-1. Ты описываешь проблему своими словами
-2. Я задаю 3-5 уточняющих вопросов
-3. Ты получаешь решение с конкретными шагами{referral_bonus_message}
-
-Используй меню внизу для навигации! 👇"""
+    # Move to birth date input
+    await state.set_state(OnboardingStates.entering_birth_date)
 
     await callback.message.edit_text(
-        text=welcome_text,
+        "📅 Укажи дату рождения (ДД.ММ.ГГГГ)\n\n"
+        "Например: 15.03.1995\n\n"
+        "Возраст важен для точности — решения для 20 и 40 лет сильно отличаются.",
         parse_mode="HTML"
-    )
-    await callback.message.answer(
-        "👇",
-        reply_markup=get_main_menu_keyboard()
     )
     await callback.answer()
 
@@ -432,9 +424,10 @@ async def handle_gender_male(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "gender_female")
 async def handle_gender_female(callback: CallbackQuery, state: FSMContext):
     """Handle female gender selection"""
+    from bot.states import OnboardingStates
+
     async with AsyncSessionLocal() as session:
         from bot.database.crud import get_user_by_telegram_id
-        from bot.database.crud_subscriptions import get_user_by_referral_code, create_referral
 
         user = await get_user_by_telegram_id(session, callback.from_user.id)
         if user:
@@ -442,39 +435,149 @@ async def handle_gender_female(callback: CallbackQuery, state: FSMContext):
             await session.commit()
             logger.info(f"User {user.telegram_id} selected gender: female")
 
-            # Process referral if stored in state
-            data = await state.get_data()
-            referral_code = data.get('referral_code')
-            referral_bonus_message = ""
+    # Move to birth date input
+    await state.set_state(OnboardingStates.entering_birth_date)
 
-            if referral_code:
-                try:
-                    referrer = await get_user_by_referral_code(session, referral_code)
-                    if referrer and referrer.id != user.id:
-                        # Create referral record and grant rewards
-                        await create_referral(session, referrer.id, user.id)
-                        referral_bonus_message = "\n\n✨ <b>Бонус!</b> Ты получила +1 решение от друга!\n"
+    await callback.message.edit_text(
+        "📅 Укажи дату рождения (ДД.ММ.ГГГГ)\n\n"
+        "Например: 15.03.1995\n\n"
+        "Возраст важен для точности — решения для 20 и 40 лет сильно отличаются.",
+        parse_mode="HTML"
+    )
+    await callback.answer()
 
-                        # Notify referrer
-                        try:
-                            await callback.bot.send_message(
-                                referrer.telegram_id,
-                                "🎉 <b>Твой друг присоединился!</b>\n\n"
-                                "Ты получил +1 бонусное решение за приглашение.",
-                                parse_mode="HTML"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Failed to notify referrer {referrer.telegram_id}: {e}")
+# New onboarding handlers
+@router.message(OnboardingStates.entering_birth_date)
+async def handle_birth_date_input(message: Message, state: FSMContext):
+    """Handle birth date input"""
+    from bot.states import OnboardingStates
 
-                        logger.info(f"Referral processed: {referrer.id} -> {user.id}")
-                except Exception as e:
-                    logger.error(f"Error processing referral: {e}")
+    # Validate birth date
+    is_valid, result = validate_birth_date(message.text)
 
-    # Clear state
+    if not is_valid:
+        # Send error message
+        await message.answer(result)
+        return
+
+    # Save birth date to database
+    birth_date = result
+    async with AsyncSessionLocal() as session:
+        from bot.database.crud import get_user_by_telegram_id
+
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        if user:
+            user.birth_date = birth_date
+            await session.commit()
+            logger.info(f"User {user.telegram_id} entered birth date: {birth_date}")
+
+    # Move to occupation input
+    await state.set_state(OnboardingStates.entering_occupation)
+
+    await message.answer(
+        "💼 Чем занимаешься?\n\n"
+        "Напиши кратко (1-3 слова):\n"
+        "• Менеджер в IT\n"
+        "• Студент МГУ\n"
+        "• Свой бизнес (кафе)\n"
+        "• Не работаю\n"
+        "• и т.д."
+    )
+
+
+@router.message(OnboardingStates.entering_occupation)
+async def handle_occupation_input(message: Message, state: FSMContext):
+    """Handle occupation input"""
+    from bot.states import OnboardingStates
+
+    occupation = message.text.strip()
+
+    # Basic validation
+    if len(occupation) < 2:
+        await message.answer("Слишком короткий ответ. Напиши хотя бы 2 символа.")
+        return
+
+    if len(occupation) > 100:
+        await message.answer("Слишком длинный ответ. Укажи кратко (до 100 символов).")
+        return
+
+    # Save occupation to database
+    async with AsyncSessionLocal() as session:
+        from bot.database.crud import get_user_by_telegram_id
+
+        user = await get_user_by_telegram_id(session, message.from_user.id)
+        if user:
+            user.occupation = occupation
+            await session.commit()
+            logger.info(f"User {user.telegram_id} entered occupation: {occupation}")
+
+    # Move to work format selection
+    await state.set_state(OnboardingStates.choosing_work_format)
+
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🏠 Дома (удаленно)", callback_data="work_format_remote")
+    builder.button(text="🏢 В офисе", callback_data="work_format_office")
+    builder.button(text="🔀 Гибрид (дом + офис)", callback_data="work_format_hybrid")
+    builder.button(text="🎓 Учусь / не работаю", callback_data="work_format_student")
+    builder.adjust(1)
+
+    await message.answer(
+        "🏠 Где работаешь?",
+        reply_markup=builder.as_markup()
+    )
+
+
+@router.callback_query(F.data.startswith("work_format_"))
+async def handle_work_format_selection(callback: CallbackQuery, state: FSMContext):
+    """Handle work format selection"""
+    from bot.database.crud_subscriptions import get_user_by_referral_code, create_referral
+
+    work_format = callback.data.replace("work_format_", "")
+
+    # Save work format to database
+    async with AsyncSessionLocal() as session:
+        from bot.database.crud import get_user_by_telegram_id
+
+        user = await get_user_by_telegram_id(session, callback.from_user.id)
+        if user:
+            user.work_format = work_format
+            await session.commit()
+            logger.info(f"User {user.telegram_id} selected work format: {work_format}")
+
+        # Process referral if stored in state
+        data = await state.get_data()
+        referral_code = data.get('referral_code')
+        referral_bonus_message = ""
+
+        if referral_code and user:
+            try:
+                referrer = await get_user_by_referral_code(session, referral_code)
+                if referrer and referrer.id != user.id:
+                    # Create referral record and grant rewards
+                    await create_referral(session, referrer.id, user.id)
+                    gender_word = "получил" if user.gender == "male" else "получила"
+                    referral_bonus_message = f"\n\n✨ <b>Бонус!</b> Ты {gender_word} +1 решение от друга!\n"
+
+                    # Notify referrer
+                    try:
+                        await callback.bot.send_message(
+                            referrer.telegram_id,
+                            "🎉 <b>Твой друг присоединился!</b>\n\n"
+                            "Ты получил +1 бонусное решение за приглашение.",
+                            parse_mode="HTML"
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to notify referrer {referrer.telegram_id}: {e}")
+
+                    logger.info(f"Referral processed: {referrer.id} -> {user.id}")
+            except Exception as e:
+                logger.error(f"Error processing referral: {e}")
+
+    # Clear onboarding state
     await state.clear()
 
     # Send welcome message
-    welcome_text = f"""👋 Отлично!
+    welcome_text = f"""✅ Отлично! Профиль создан.
 
 Я твой личный коуч по решению проблем. Помогу разобраться в любой ситуации и найти реальное решение.
 

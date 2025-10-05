@@ -18,6 +18,9 @@ class User(Base):
     username: Mapped[Optional[str]] = mapped_column(String(32))
     first_name: Mapped[str] = mapped_column(String(64), nullable=False)
     gender: Mapped[Optional[str]] = mapped_column(String(10))  # 'male', 'female'
+    birth_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # Date of birth for age calculation
+    occupation: Mapped[Optional[str]] = mapped_column(String(100))  # User's occupation/job
+    work_format: Mapped[Optional[str]] = mapped_column(String(20))  # 'remote', 'office', 'hybrid', 'student'
     problems_remaining: Mapped[int] = mapped_column(Integer, default=1)  # Optimized for conversion
     discussion_credits: Mapped[int] = mapped_column(Integer, default=0)
     last_purchased_package: Mapped[Optional[str]] = mapped_column(String(20))  # 'starter', 'medium', 'large'
