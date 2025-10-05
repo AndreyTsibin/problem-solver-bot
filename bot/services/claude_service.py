@@ -56,6 +56,15 @@ class ClaudeService:
                 messages=[{"role": "user", "content": context}]
             )
 
+            # Log token usage
+            logger.info(
+                "question_generated",
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                cache_creation_input_tokens=getattr(message.usage, 'cache_creation_input_tokens', 0),
+                cache_read_input_tokens=getattr(message.usage, 'cache_read_input_tokens', 0)
+            )
+
             question = message.content[0].text.strip()
             return question
 
@@ -111,6 +120,15 @@ class ClaudeService:
                         }
                     ],
                     messages=[{"role": "user", "content": context}]
+                )
+
+                # Log token usage
+                logger.info(
+                    "solution_generated",
+                    input_tokens=message.usage.input_tokens,
+                    output_tokens=message.usage.output_tokens,
+                    cache_creation_input_tokens=getattr(message.usage, 'cache_creation_input_tokens', 0),
+                    cache_read_input_tokens=getattr(message.usage, 'cache_read_input_tokens', 0)
                 )
 
                 solution = message.content[0].text.strip()
@@ -169,6 +187,15 @@ class ClaudeService:
                     }
                 ],
                 messages=[{"role": "user", "content": context}]
+            )
+
+            # Log token usage
+            logger.info(
+                "discussion_answer_generated",
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                cache_creation_input_tokens=getattr(message.usage, 'cache_creation_input_tokens', 0),
+                cache_read_input_tokens=getattr(message.usage, 'cache_read_input_tokens', 0)
             )
 
             answer = message.content[0].text.strip()

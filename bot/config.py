@@ -27,7 +27,7 @@ if not YOOKASSA_SHOP_ID or not YOOKASSA_SECRET_KEY:
 
 # Free tier limits
 FREE_SOLUTIONS = 1  # Free problem solutions per user (optimized for conversion)
-FREE_DISCUSSION_QUESTIONS = 5  # Base question limit for all users
+FREE_DISCUSSION_QUESTIONS = 3  # Base question limit for all users (optimized to reduce token costs)
 
 # Package limits for paid users
 STARTER_DISCUSSION_LIMIT = 10  # Additional questions for Starter package
