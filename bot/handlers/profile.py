@@ -51,6 +51,22 @@ async def show_profile(message: Message):
             'student': 'Учусь/не работаю'
         }.get(user.work_format, 'не указан')
 
+        # Calculate available discussion questions
+        from bot.config import (
+            FREE_DISCUSSION_QUESTIONS,
+            STARTER_DISCUSSION_LIMIT,
+            MEDIUM_DISCUSSION_LIMIT,
+            LARGE_DISCUSSION_LIMIT
+        )
+
+        base_limits = {
+            'starter': STARTER_DISCUSSION_LIMIT,
+            'medium': MEDIUM_DISCUSSION_LIMIT,
+            'large': LARGE_DISCUSSION_LIMIT
+        }
+        base_limit = base_limits.get(user.last_purchased_package, FREE_DISCUSSION_QUESTIONS)
+        total_discussion_credits = base_limit + user.discussion_credits
+
         text = f"""👤 Твой профиль
 
 📊 Личные данные:
@@ -61,7 +77,7 @@ async def show_profile(message: Message):
 
 💳 Баланс:
 • Решений осталось: {user.problems_remaining}
-• Вопросов для обсуждения: {user.discussion_credits}
+• Вопросов для обсуждения: {total_discussion_credits}
 
 🎁 Реферальная программа:
 • Приглашено друзей: {stats['total_referrals']}
