@@ -19,9 +19,15 @@ class ClaudeService:
         problem_description: str,
         conversation_history: List[Dict],
         step: int,
-        gender: str = None
+        user_context: Dict = None
     ) -> str:
-        """Generate next question with prompt caching and gender awareness"""
+        """Generate next question with prompt caching and user context"""
+        # Extract user context
+        gender = user_context.get('gender') if user_context else None
+        age = user_context.get('age') if user_context else None
+        occupation = user_context.get('occupation') if user_context else None
+        work_format = user_context.get('work_format') if user_context else None
+
         context = self.prompt_builder.build_questioning_context(
             problem_description=problem_description,
             conversation_history=conversation_history,
@@ -35,7 +41,12 @@ class ClaudeService:
                 system=[
                     {
                         "type": "text",
-                        "text": self.prompt_builder.build_system_prompt(gender=gender),
+                        "text": self.prompt_builder.build_system_prompt(
+                            gender=gender,
+                            age=age,
+                            occupation=occupation,
+                            work_format=work_format
+                        ),
                         "cache_control": {"type": "ephemeral"}
                     }
                 ],
@@ -53,9 +64,15 @@ class ClaudeService:
         self,
         problem_description: str,
         conversation_history: List[Dict],
-        gender: str = None
+        user_context: Dict = None
     ) -> str:
-        """Generate final solution with prompt caching and gender awareness"""
+        """Generate final solution with prompt caching and user context"""
+        # Extract user context
+        gender = user_context.get('gender') if user_context else None
+        age = user_context.get('age') if user_context else None
+        occupation = user_context.get('occupation') if user_context else None
+        work_format = user_context.get('work_format') if user_context else None
+
         context = self.prompt_builder.build_solution_context(
             problem_description=problem_description,
             conversation_history=conversation_history
@@ -69,7 +86,12 @@ class ClaudeService:
                     system=[
                         {
                             "type": "text",
-                            "text": self.prompt_builder.build_system_prompt(gender=gender),
+                            "text": self.prompt_builder.build_system_prompt(
+                                gender=gender,
+                                age=age,
+                                occupation=occupation,
+                                work_format=work_format
+                            ),
                             "cache_control": {"type": "ephemeral"}
                         }
                     ],
@@ -100,9 +122,15 @@ class ClaudeService:
         problem_description: str,
         conversation_history: List[Dict],
         user_question: str,
-        gender: str = None
+        user_context: Dict = None
     ) -> str:
         """Generate answer for discussion mode with FULL context"""
+        # Extract user context
+        gender = user_context.get('gender') if user_context else None
+        age = user_context.get('age') if user_context else None
+        occupation = user_context.get('occupation') if user_context else None
+        work_format = user_context.get('work_format') if user_context else None
+
         context = self.prompt_builder.build_discussion_context(
             problem_description=problem_description,
             conversation_history=conversation_history,
@@ -116,7 +144,12 @@ class ClaudeService:
                 system=[
                     {
                         "type": "text",
-                        "text": self.prompt_builder.build_system_prompt(gender=gender),
+                        "text": self.prompt_builder.build_system_prompt(
+                            gender=gender,
+                            age=age,
+                            occupation=occupation,
+                            work_format=work_format
+                        ),
                         "cache_control": {"type": "ephemeral"}
                     }
                 ],

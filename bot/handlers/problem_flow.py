@@ -13,7 +13,7 @@ from bot.states import ProblemSolvingStates
 from bot.services.claude_service import ClaudeService
 from bot.services.prompt_builder import PromptBuilder
 from bot.database.engine import AsyncSessionLocal
-from bot.database.crud import get_user_by_telegram_id, create_problem
+from bot.database.crud import get_user_by_telegram_id, create_problem, calculate_age
 from bot.database.models import Problem
 from bot.config import (
     FREE_DISCUSSION_QUESTIONS,
@@ -63,10 +63,34 @@ async def receive_problem(message: Message, state: FSMContext):
     """Start problem analysis (simplified - no pre-analysis)"""
     problem_text = message.text
 
-    # Create problem in DB and get user gender
+    # Validate minimum word count
+    word_count = len(problem_text.split())
+    if word_count < 50:
+        await message.answer(
+            f"⚠️ Опиши проблему подробнее\n\n"
+            f"📊 Сейчас: {word_count} слов\n"
+            f"✅ Нужно минимум: 50 слов\n\n"
+            f"Добавь детали:\n"
+            f"• Что именно происходит?\n"
+            f"• Как долго это длится?\n"
+            f"• Что ты уже пробовал(а)?\n"
+            f"• Как это влияет на твою жизнь?"
+        )
+        return
+
+    # Create problem in DB and get user context
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
-        user_gender = user.gender if user else None
+
+        # Get user context
+        age = calculate_age(user.birth_date) if user.birth_date else None
+
+        user_context = {
+            'gender': user.gender if user else None,
+            'age': age,
+            'occupation': user.occupation if user else None,
+            'work_format': user.work_format if user else None
+        }
 
         problem = await create_problem(
             session, user.id, problem_text,
@@ -79,13 +103,13 @@ async def receive_problem(message: Message, state: FSMContext):
         remaining = user.problems_remaining
         await session.commit()
 
-    # Save to state (including gender for all future requests)
+    # Save to state (including user context for all future requests)
     await state.update_data(
         problem_description=problem_text,
         conversation_history=[],
         current_step=1,
         problem_id=problem.id,
-        user_gender=user_gender  # Save gender once at the beginning
+        user_context=user_context  # Save user context once at the beginning
     )
 
     # Ask first question immediately
@@ -96,7 +120,7 @@ async def receive_problem(message: Message, state: FSMContext):
 async def ask_next_question(message: Message, state: FSMContext):
     """Generate and send next question with status message editing"""
     data = await state.get_data()
-    user_gender = data.get('user_gender')  # Get gender from state
+    user_context = data.get('user_context')  # Get user context from state
 
     # Show typing indicator while generating question
     bot = message.bot
@@ -119,7 +143,7 @@ async def ask_next_question(message: Message, state: FSMContext):
             problem_description=data['problem_description'],
             conversation_history=data['conversation_history'],
             step=data['current_step'],
-            gender=user_gender
+            user_context=user_context
         )
 
     # Edit status message to show the question
@@ -159,7 +183,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     await state.set_state(ProblemSolvingStates.generating_solution)
 
     bot = message.bot
-    user_gender = data.get('user_gender')
+    user_context = data.get('user_context')
 
     # Show status message
     status_msg = await message.answer("⏳ Анализирую всю информацию и готовлю решение...")
@@ -171,7 +195,7 @@ async def generate_final_solution(message: Message, state: FSMContext):
     solution_text = await claude.generate_solution(
         problem_description=data['problem_description'],
         conversation_history=data['conversation_history'],
-        gender=user_gender
+        user_context=user_context
     )
 
     # Save to DB
@@ -254,7 +278,7 @@ async def start_discussion(callback: CallbackQuery, state: FSMContext):
 async def handle_discussion_question(message: Message, state: FSMContext):
     """Handle user's discussion question"""
     data = await state.get_data()
-    user_gender = data.get('user_gender')  # Get gender from state (saved at problem start)
+    user_context = data.get('user_context')  # Get user context from state (saved at problem start)
 
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
@@ -306,7 +330,7 @@ async def handle_discussion_question(message: Message, state: FSMContext):
                 problem_description=data.get('problem_description', ''),
                 conversation_history=conversation_history,
                 user_question=user_question,
-                gender=user_gender
+                user_context=user_context
             )
 
         # Add question and answer to history

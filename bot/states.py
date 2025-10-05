@@ -10,6 +10,14 @@ class OnboardingStates(StatesGroup):
     choosing_work_format = State()  # Choosing work format (remote/office/hybrid/student)
 
 
+class ProfileEditStates(StatesGroup):
+    """States for editing profile fields"""
+    editing_gender = State()
+    editing_birth_date = State()
+    editing_occupation = State()
+    editing_work_format = State()
+
+
 class ProblemSolvingStates(StatesGroup):
     """States for problem analysis flow"""
     waiting_for_problem = State()  # Waiting for problem description

@@ -253,20 +253,57 @@ class PromptBuilder:
 
 Весь текст на русском языке!"""
 
-    def build_system_prompt(self, gender: str = None) -> str:
+    def build_system_prompt(
+        self,
+        gender: str = None,
+        age: int = None,
+        occupation: str = None,
+        work_format: str = None
+    ) -> str:
         """
-        Get the system prompt for Claude with gender-specific addon
+        Get the system prompt for Claude with user context
 
         Args:
             gender: User's gender ('male', 'female', or None)
+            age: User's age (calculated from birth_date)
+            occupation: User's occupation/employment status
+            work_format: User's work format ('remote', 'office', 'hybrid', 'student')
 
         Returns:
-            Complete system prompt with gender-specific instructions
+            Complete system prompt with user context and gender-specific instructions
         """
         base_prompt = self.system_prompt
+
+        # Add user context if available
+        if age or occupation or work_format:
+            work_format_text = {
+                'remote': 'Работает удаленно из дома',
+                'office': 'Работает в офисе',
+                'hybrid': 'Гибридный формат (дом + офис)',
+                'student': 'Учится / не работает'
+            }.get(work_format, 'Не указан')
+
+            context_addon = f"""
+# КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ
+
+Пол: {'Мужской' if gender == 'male' else 'Женский' if gender == 'female' else 'Не указан'}
+Возраст: {age} лет
+Занятость: {occupation or 'не указана'}
+Формат работы: {work_format_text}
+
+**Учитывай этот контекст:**
+- При проблемах с продуктивностью → формат работы критичен
+- При проблемах с отношениями → офис = коллеги, дом = семья
+- При выгорании → удаленка и офис = разные причины
+- Возраст влияет на приоритеты и решения
+"""
+            base_prompt = base_prompt + "\n" + context_addon
+
+        # Add gender-specific addon
         if gender:
             gender_addon = self._build_gender_specific_addon(gender)
-            return base_prompt + "\n" + gender_addon
+            base_prompt = base_prompt + "\n" + gender_addon
+
         return base_prompt
 
     def build_questioning_context(

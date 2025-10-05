@@ -6,6 +6,16 @@ from datetime import datetime, timedelta
 import secrets
 
 
+def calculate_age(birth_date: datetime) -> Optional[int]:
+    """Calculate age from birth date"""
+    if not birth_date:
+        return None
+    today = datetime.today()
+    return today.year - birth_date.year - (
+        (today.month, today.day) < (birth_date.month, birth_date.day)
+    )
+
+
 # User operations
 async def get_or_create_user(
     session: AsyncSession,
