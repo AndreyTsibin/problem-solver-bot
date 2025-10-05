@@ -98,24 +98,24 @@ async def show_packages(callback: CallbackQuery):
     """Show only one-time packages (Level 1)"""
     text = """💰 <b>Выбери пакет</b>
 
-<b>📒 Стартовый</b>
+<b>🔥 Стартовый</b>
 • 5 решений проблем
 • 10 вопросов на обсуждение
 
-<b>📗 Средний</b>
+<b>⚡ Средний</b>
 • 15 решений проблем
 • 15 вопросов на обсуждение
 
-<b>📕 Большой</b>
+<b>💥 Большой</b>
 • 30 решений проблем
 • 25 вопросов на обсуждение
 
 <i>💡 Решения не сгорают — используй когда удобно!</i>"""
 
     builder = InlineKeyboardBuilder()
-    builder.button(text="📒 Стартовый", callback_data="select_package_starter")
-    builder.button(text="📗 Средний", callback_data="select_package_medium")
-    builder.button(text="📕 Большой", callback_data="select_package_large")
+    builder.button(text="🔥 Стартовый", callback_data="select_package_starter")
+    builder.button(text="⚡ Средний", callback_data="select_package_medium")
+    builder.button(text="💥 Большой", callback_data="select_package_large")
     builder.button(text="◀️ Назад", callback_data="buy_solutions")
     builder.adjust(1)
 

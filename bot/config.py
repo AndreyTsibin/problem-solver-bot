@@ -56,9 +56,9 @@ ENABLE_TELEGRAM_STARS = True  # Telegram Stars (international payments)
 
 # Pricing for Telegram Stars (in stars, ~2₽ per star)
 PACKAGES_STARS = {
-    'starter': {'solutions': 5, 'price': 125, 'discussion_limit': 10, 'name': '📒 Стартовый'},
-    'medium': {'solutions': 15, 'price': 300, 'discussion_limit': 15, 'name': '📗 Средний'},
-    'large': {'solutions': 30, 'price': 600, 'discussion_limit': 25, 'name': '📕 Большой'},
+    'starter': {'solutions': 5, 'price': 125, 'discussion_limit': 10, 'name': '🔥 Стартовый'},
+    'medium': {'solutions': 15, 'price': 300, 'discussion_limit': 15, 'name': '⚡ Средний'},
+    'large': {'solutions': 30, 'price': 600, 'discussion_limit': 25, 'name': '💥 Большой'},
     'discussion_5': {'discussions': 5, 'price': 50, 'name': '5 вопросов'},
     'discussion_15': {'discussions': 15, 'price': 120, 'name': '15 вопросов'},
     'subscription_standard': {'solutions': 15, 'price': 299, 'discussion_limit': 15, 'plan': 'standard', 'name': '🔸 Стандарт'},
@@ -67,9 +67,9 @@ PACKAGES_STARS = {
 
 # Pricing for YooKassa (in rubles)
 PACKAGES_YOOKASSA = {
-    'starter': {'solutions': 5, 'price': 250, 'discussion_limit': 10, 'name': '📒 Стартовый'},
-    'medium': {'solutions': 15, 'price': 600, 'discussion_limit': 15, 'name': '📗 Средний'},
-    'large': {'solutions': 30, 'price': 1200, 'discussion_limit': 25, 'name': '📕 Большой'},
+    'starter': {'solutions': 5, 'price': 250, 'discussion_limit': 10, 'name': '🔥 Стартовый'},
+    'medium': {'solutions': 15, 'price': 600, 'discussion_limit': 15, 'name': '⚡ Средний'},
+    'large': {'solutions': 30, 'price': 1200, 'discussion_limit': 25, 'name': '💥 Большой'},
     'discussion_5': {'discussions': 5, 'price': 100, 'name': '5 вопросов'},
     'discussion_15': {'discussions': 15, 'price': 240, 'name': '15 вопросов'},
     'subscription_standard': {'solutions': 15, 'price': 599, 'discussion_limit': 15, 'plan': 'standard', 'name': '🔸 Стандарт'},
