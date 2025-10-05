@@ -63,21 +63,6 @@ async def receive_problem(message: Message, state: FSMContext):
     """Start problem analysis (simplified - no pre-analysis)"""
     problem_text = message.text
 
-    # Validate minimum word count
-    word_count = len(problem_text.split())
-    if word_count < 50:
-        await message.answer(
-            f"⚠️ Опиши проблему подробнее\n\n"
-            f"📊 Сейчас: {word_count} слов\n"
-            f"✅ Нужно минимум: 50 слов\n\n"
-            f"Добавь детали:\n"
-            f"• Что именно происходит?\n"
-            f"• Как долго это длится?\n"
-            f"• Что ты уже пробовал(а)?\n"
-            f"• Как это влияет на твою жизнь?"
-        )
-        return
-
     # Create problem in DB and get user context
     async with AsyncSessionLocal() as session:
         user = await get_user_by_telegram_id(session, message.from_user.id)
