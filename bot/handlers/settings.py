@@ -4,10 +4,10 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_user_by_telegram_id
-import logging
+import structlog
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @router.message(Command("settings"))

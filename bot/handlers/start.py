@@ -7,13 +7,13 @@ from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_or_create_user, calculate_age
 from bot.keyboards import get_main_menu_keyboard
 from bot.states import OnboardingStates, ProblemSolvingStates
-import logging
+import structlog
 import asyncio
 from datetime import datetime, timedelta
 from typing import Tuple, Union
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Track last /start call per user to prevent duplicates
 _last_start_calls = {}

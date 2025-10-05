@@ -1,6 +1,5 @@
 import asyncio
-import logging
-import sys
+import structlog
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -10,17 +9,11 @@ from bot.database.engine import init_db
 from bot.handlers import start, problem_flow, history, payment, referral, subscription, settings, profile
 from bot.middleware.errors import ErrorHandlingMiddleware
 from bot.services.subscription_renewal import start_renewal_scheduler
+from bot.logging_config import setup_logging
 
-# Configure structured logging with both file and console output
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    handlers=[
-        logging.FileHandler('bot.log', encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# Configure production-ready logging
+setup_logging()
+logger = structlog.get_logger(__name__)
 
 async def main():
     """Main bot function"""

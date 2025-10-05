@@ -1,8 +1,11 @@
 import anthropic
 from typing import Dict, List
 import time
+import structlog
 from bot.config import CLAUDE_API_KEY
 from bot.services.prompt_builder import PromptBuilder
+
+logger = structlog.get_logger(__name__)
 
 
 class ClaudeService:
@@ -78,6 +81,23 @@ class ClaudeService:
             conversation_history=conversation_history
         )
 
+        # Build and log system prompt
+        system_prompt = self.prompt_builder.build_system_prompt(
+            gender=gender,
+            age=age,
+            occupation=occupation,
+            work_format=work_format
+        )
+
+        # Log solution generation with structured context
+        logger.info(
+            "generating_solution",
+            user_gender=gender,
+            user_age=age,
+            user_occupation=occupation,
+            user_work_format=work_format
+        )
+
         for attempt in range(self.max_retries):
             try:
                 message = self.client.messages.create(
@@ -86,12 +106,7 @@ class ClaudeService:
                     system=[
                         {
                             "type": "text",
-                            "text": self.prompt_builder.build_system_prompt(
-                                gender=gender,
-                                age=age,
-                                occupation=occupation,
-                                work_format=work_format
-                            ),
+                            "text": system_prompt,
                             "cache_control": {"type": "ephemeral"}
                         }
                     ],

@@ -7,10 +7,10 @@ from bot.database.engine import AsyncSessionLocal
 from bot.database.crud import get_or_create_user, get_user_by_telegram_id, calculate_age
 from bot.states import ProfileEditStates
 from datetime import datetime
-import logging
+import structlog
 
 router = Router()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @router.message(F.text == "👤 Профиль")

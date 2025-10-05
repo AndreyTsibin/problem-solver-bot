@@ -5,7 +5,7 @@ This middleware catches all exceptions that occur during update processing
 and provides user-friendly error messages while logging detailed error information.
 """
 
-import logging
+import structlog
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
@@ -17,7 +17,7 @@ from anthropic import (
     APIStatusError,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ErrorHandlingMiddleware(BaseMiddleware):
@@ -54,10 +54,10 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         except APIConnectionError as e:
             # Claude API connection error
             logger.error(
-                "Claude API connection error: %s",
-                str(e),
-                exc_info=True,
-                extra={"error_type": "api_connection"}
+                "claude_api_connection_error",
+                error=str(e),
+                error_type="api_connection",
+                exc_info=True
             )
             await self._send_error_message(
                 event,
@@ -67,9 +67,9 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         except RateLimitError as e:
             # Claude API rate limit
             logger.warning(
-                "Claude API rate limit exceeded: %s",
-                str(e),
-                extra={"error_type": "rate_limit"}
+                "claude_api_rate_limit",
+                error=str(e),
+                error_type="rate_limit"
             )
             await self._send_error_message(
                 event,
@@ -79,11 +79,11 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         except APIStatusError as e:
             # Other Claude API errors
             logger.error(
-                "Claude API error (status %s): %s",
-                e.status_code,
-                str(e),
-                exc_info=True,
-                extra={"error_type": "api_status", "status_code": e.status_code}
+                "claude_api_status_error",
+                error=str(e),
+                error_type="api_status",
+                status_code=e.status_code,
+                exc_info=True
             )
             await self._send_error_message(
                 event,
@@ -95,10 +95,10 @@ class ErrorHandlingMiddleware(BaseMiddleware):
             error_msg = str(e)
             if "can't parse entities" in error_msg.lower() or "can't find end" in error_msg.lower():
                 logger.error(
-                    "Telegram parse error (likely markdown issue): %s",
-                    error_msg,
-                    exc_info=True,
-                    extra={"error_type": "telegram_parse"}
+                    "telegram_parse_error",
+                    error=error_msg,
+                    error_type="telegram_parse",
+                    exc_info=True
                 )
                 await self._send_error_message(
                     event,
@@ -106,10 +106,10 @@ class ErrorHandlingMiddleware(BaseMiddleware):
                 )
             else:
                 logger.error(
-                    "Telegram Bad Request: %s",
-                    error_msg,
-                    exc_info=True,
-                    extra={"error_type": "telegram_bad_request"}
+                    "telegram_bad_request",
+                    error=error_msg,
+                    error_type="telegram_bad_request",
+                    exc_info=True
                 )
                 await self._send_error_message(
                     event,
@@ -119,11 +119,10 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         except Exception as e:
             # Catch-all for unexpected errors
             logger.error(
-                "Unexpected error handling update: %s - %s",
-                type(e).__name__,
-                str(e),
-                exc_info=True,
-                extra={"error_type": "unexpected"}
+                "unexpected_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                exc_info=True
             )
             await self._send_error_message(
                 event,
@@ -156,7 +155,7 @@ class ErrorHandlingMiddleware(BaseMiddleware):
         except Exception as e:
             # If we can't send error message, just log it
             logger.error(
-                "Failed to send error message to user: %s",
-                str(e),
+                "failed_to_send_error_message",
+                error=str(e),
                 exc_info=True
             )

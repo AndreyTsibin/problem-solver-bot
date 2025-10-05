@@ -10,6 +10,9 @@ CLAUDE_API_KEY = os.getenv("CLAUDE_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///bot_database.db")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
+# Logging configuration
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG" if ENVIRONMENT == "development" else "INFO")
+
 # YooKassa payment settings
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
