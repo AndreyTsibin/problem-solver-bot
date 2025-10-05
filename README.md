@@ -4,23 +4,27 @@ AI-powered Telegram bot that helps analyze and solve problems systematically usi
 
 ## Description
 
-Problem Solver Bot — это твой личный коуч по решению проблем. Бот использует Claude Sonnet 4.5 (последнюю модель Anthropic) для глубокого анализа проблем и создания конкретных планов действий.
+Problem Solver Bot — это твой личный коуч по решению проблем. Бот использует **Claude Sonnet 4.5** (`claude-sonnet-4-5-20250929`) для глубокого анализа проблем и создания конкретных планов действий.
 
 ### How It Works
 
 Claude автономно определяет лучший подход для каждой проблемы, используя свои знания психологических и аналитических техник (5 Whys, Fishbone, First Principles и др.). Не нужно выбирать методологию — AI сам решает что подходит.
 
+Бот адаптирует общение под профиль пользователя (пол, возраст, профессия, формат работы), предлагая персонализированные решения.
+
 ## Features
 
 - 🎯 **Умный анализ проблем** — Claude автоматически определяет тип проблемы и подход
+- 👤 **Персонализация** — адаптация под профиль пользователя (пол, возраст, профессия)
 - 🤖 **Интерактивный диалог** — 3-5 уточняющих вопросов для глубокого понимания
 - 📊 **Структурированные решения** — готовый план действий с эмодзи для удобства
 - 💳 **Гибкие тарифы** — подписки (автопродление) и разовые пакеты
-- 💰 **Два способа оплаты** — Telegram Stars и банковские карты (YooKassa)
+- 💰 **Два способа оплаты** — Telegram Stars (международные) и YooKassa (рубли)
 - 🎁 **Реферальная программа** — +1 решение за каждого приглашенного друга
 - 💬 **Дополнительное обсуждение** — можно задать вопросы после получения решения
-- 📋 **История решений** — все проблемы сохраняются
+- 📋 **История решений** — все проблемы сохраняются в базе данных
 - 🔒 **Безопасность данных** — SQLite база с полной конфиденциальностью
+- ⚡ **Prompt Caching** — экономия ~80% токенов на повторяющихся запросах
 
 ## Tech Stack
 
@@ -73,17 +77,41 @@ python -m bot.main
 ```
 problem-solver-bot/
 ├── bot/
-│   ├── database/          # SQLAlchemy models and CRUD
-│   ├── handlers/          # Telegram message handlers
-│   ├── services/          # Business logic (Claude API, prompts)
-│   ├── middleware/        # Error handling
-│   ├── keyboards.py       # Persistent ReplyKeyboard UI
-│   ├── states.py          # FSM state definitions
-│   ├── config.py          # Environment configuration
-│   └── main.py           # Bot entry point
-├── docs/                 # Documentation
-├── requirements.txt      # Python dependencies
-└── .env                  # Environment variables (not in git)
+│   ├── database/               # Database layer
+│   │   ├── models.py          # SQLAlchemy models (User, Problem, Payment, Subscription, Referral)
+│   │   ├── crud.py            # CRUD operations
+│   │   ├── crud_subscriptions.py  # Subscription-specific operations
+│   │   └── engine.py          # Database connection and initialization
+│   ├── handlers/              # Telegram message handlers
+│   │   ├── start.py           # /start command and onboarding
+│   │   ├── profile.py         # User profile management
+│   │   ├── problem_flow.py    # Main problem-solving flow (FSM)
+│   │   ├── payment.py         # Payment processing (Stars + YooKassa)
+│   │   ├── subscription.py    # Subscription management
+│   │   ├── history.py         # Problem history
+│   │   ├── referral.py        # Referral program
+│   │   └── settings.py        # User settings
+│   ├── services/              # Business logic
+│   │   ├── claude_service.py  # Claude API integration (questions, solutions, discussion)
+│   │   ├── prompt_builder.py  # Gender-adaptive prompt construction
+│   │   ├── subscription_renewal.py  # Background scheduler for auto-renewal
+│   │   └── yookassa_service.py     # YooKassa payment integration
+│   ├── middleware/            # Middleware
+│   │   └── errors.py          # Global error handling
+│   ├── keyboards.py           # Persistent keyboards (is_persistent=True)
+│   ├── states.py              # FSM states (ProblemSolvingStates, OnboardingStates, ProfileEditStates)
+│   ├── config.py              # Environment configuration and pricing
+│   ├── logging_config.py      # Structlog setup
+│   └── main.py                # Bot entry point
+├── scripts/                   # Deployment scripts
+│   ├── deploy.sh              # Automated VPS deployment
+│   ├── update.sh              # Update bot after changes
+│   ├── backup.sh              # Database backup
+│   └── logs.sh                # Interactive log viewer
+├── CLAUDE.md                  # Instructions for Claude Code
+├── TESTING.md                 # Testing guide
+├── requirements.txt           # Python dependencies
+└── .env                       # Environment variables (not in git)
 ```
 
 ## Usage
@@ -95,9 +123,55 @@ problem-solver-bot/
 5. Receive a structured solution with action plan
 6. (Optional) Ask follow-up questions if you have discussion credits
 
+## Key Architecture Features
+
+### 1. User Personalization
+Бот собирает профиль пользователя (опционально):
+- Пол (male/female) — адаптирует стиль общения
+- Возраст — рассчитывается из даты рождения
+- Профессия — контекст для решений
+- Формат работы (remote/office/hybrid/student)
+
+Все параметры передаются в Claude через `user_context` для персонализированных промптов.
+
+### 2. Gender-Adaptive Prompts
+- **Male**: метрики, логика, минимум эмпатии
+- **Female**: контекст, эмоции, краткая валидация + инструменты
+
+Реализовано в [bot/services/prompt_builder.py](bot/services/prompt_builder.py).
+
+### 3. FSM States
+- `ProblemSolvingStates` — основной флоу (waiting_for_problem → asking_questions → generating_solution → discussing_solution)
+- `OnboardingStates` — сбор профиля (gender → birth_date → occupation → work_format)
+- `ProfileEditStates` — редактирование профиля
+
+### 4. Dual Payment System
+- **Telegram Stars** — международные платежи (~2₽ за звезду)
+- **YooKassa** — российские карты (рубли)
+
+Оба поддерживают подписки с автопродлением и разовые пакеты.
+
+### 5. Prompt Caching
+Все запросы к Claude используют `cache_control: {"type": "ephemeral"}` для системных промптов. Экономия ~80% токенов на повторяющихся промптах.
+
+### 6. Free Tier
+- 1 бесплатное решение (оптимизировано для конверсии)
+- 5 вопросов для обсуждения
+
+### 7. Background Subscription Renewal
+Асинхронный планировщик ([bot/services/subscription_renewal.py](bot/services/subscription_renewal.py)) автоматически продлевает подписки и начисляет кредиты.
+
 ## Development
 
-For detailed development instructions, see [docs/TASKS.md](docs/TASKS.md).
+**ВАЖНО:** Всегда запускайте бота через `-m` флаг:
+```bash
+python -m bot.main  # ✓ Correct
+python bot/main.py  # ✗ Wrong (import errors)
+```
+
+Подробная документация для разработчиков:
+- [CLAUDE.md](CLAUDE.md) — инструкции для Claude Code
+- [TESTING.md](TESTING.md) — руководство по тестированию
 
 ## Deployment
 
@@ -147,6 +221,23 @@ sudo bash scripts/backup.sh
 ```
 
 For complete deployment guide, see [DEPLOYMENT.md](DEPLOYMENT.md)
+
+## Environment Variables
+
+Создайте файл `.env` в корне проекта:
+
+```env
+# Required
+BOT_TOKEN=your_telegram_bot_token
+CLAUDE_API_KEY=your_claude_api_key
+YOOKASSA_SHOP_ID=your_yookassa_shop_id
+YOOKASSA_SECRET_KEY=your_yookassa_secret_key
+
+# Optional
+DATABASE_URL=sqlite+aiosqlite:///bot_database.db
+ENVIRONMENT=development
+LOG_LEVEL=DEBUG
+```
 
 ## Team
 
