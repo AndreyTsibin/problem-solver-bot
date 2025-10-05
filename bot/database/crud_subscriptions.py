@@ -203,7 +203,8 @@ async def get_discussion_limit(session: AsyncSession, user_id: int) -> int:
     user = result.scalar_one_or_none()
 
     if not user:
-        return 5  # Default free tier limit
+        from bot.config import FREE_DISCUSSION_QUESTIONS
+        return FREE_DISCUSSION_QUESTIONS  # Default free tier limit
 
     # Check if user has active subscription
     if user.subscription_id:

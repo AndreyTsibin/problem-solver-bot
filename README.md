@@ -156,7 +156,7 @@ problem-solver-bot/
 
 ### 6. Free Tier
 - 1 бесплатное решение (оптимизировано для конверсии)
-- 5 вопросов для обсуждения
+- 3 вопроса для обсуждения
 
 ### 7. Background Subscription Renewal
 Асинхронный планировщик ([bot/services/subscription_renewal.py](bot/services/subscription_renewal.py)) автоматически продлевает подписки и начисляет кредиты.
