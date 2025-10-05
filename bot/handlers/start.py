@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.database.engine import AsyncSessionLocal
-from bot.database.crud import get_or_create_user
+from bot.database.crud import get_or_create_user, calculate_age
 from bot.keyboards import get_main_menu_keyboard
 from bot.states import OnboardingStates, ProblemSolvingStates
 import logging
@@ -43,12 +43,6 @@ def validate_birth_date(text: str) -> Tuple[bool, Union[datetime, str]]:
         return False, "Неверный формат ⚠️\n\nИспользуй формат ДД.ММ.ГГГГ\nНапример: 15.03.1995"
 
 
-def calculate_age(birth_date: datetime) -> int:
-    """Calculate age from birth date"""
-    today = datetime.today()
-    return today.year - birth_date.year - (
-        (today.month, today.day) < (birth_date.month, birth_date.day)
-    )
 
 
 def _get_solutions_word(count: int) -> str:

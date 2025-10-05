@@ -275,7 +275,7 @@ class PromptBuilder:
         base_prompt = self.system_prompt
 
         # Add user context if available
-        if age or occupation or work_format:
+        if age or occupation or work_format or gender:
             work_format_text = {
                 'remote': 'Работает удаленно из дома',
                 'office': 'Работает в офисе',
@@ -283,17 +283,21 @@ class PromptBuilder:
                 'student': 'Учится / не работает'
             }.get(work_format, 'Не указан')
 
+            gender_text = 'Мужской' if gender == 'male' else 'Женский' if gender == 'female' else 'Не указан'
+            age_text = f"{age} лет" if age else "не указан"
+            occupation_text = occupation or "не указана"
+
             context_addon = f"""
 # КОНТЕКСТ ПОЛЬЗОВАТЕЛЯ
 
-Пол: {'Мужской' if gender == 'male' else 'Женский' if gender == 'female' else 'Не указан'}
-Возраст: {age} лет
-Занятость: {occupation or 'не указана'}
+Пол: {gender_text}
+Возраст: {age_text}
+Занятость: {occupation_text}
 Формат работы: {work_format_text}
 
 **Учитывай этот контекст:**
 - При проблемах с продуктивностью → формат работы критичен
-- При проблемах с отношениями → офис = коллеги, дом = семья
+- При проблемах с отношениях → офис = коллеги, дом = семья
 - При выгорании → удаленка и офис = разные причины
 - Возраст влияет на приоритеты и решения
 """
